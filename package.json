@@ -60,6 +60,7 @@
     "release": "npm run prepublishOnly && npm publish --access public"
   },
   "dependencies": {
+    "@provablehq/sdk": "^0.10.2",
     "@sodax/sdk": "^1.5.7-beta",
     "@sodax/wallet-sdk": "^0.0.1-rc.18"
   },
@@ -71,13 +72,24 @@
     "tweetnacl": "*"
   },
   "peerDependenciesMeta": {
-    "@provablehq/sdk": { "optional": true },
-    "@solana/web3.js": { "optional": true },
-    "bs58": { "optional": true },
-    "ethers": { "optional": true },
-    "tweetnacl": { "optional": true }
+    "@provablehq/sdk": {
+      "optional": true
+    },
+    "@solana/web3.js": {
+      "optional": true
+    },
+    "bs58": {
+      "optional": true
+    },
+    "ethers": {
+      "optional": true
+    },
+    "tweetnacl": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@provablehq/sdk": "^0.10.3",
     "@solana/web3.js": "^1.95.0",
     "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^7.4.0",

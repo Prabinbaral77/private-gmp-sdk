@@ -27,11 +27,8 @@ export async function deriveAleoAccount(
   }
 
   const network = options.network ?? 'testnet';
-  console.log("accoountf actory from sdk", options);
-  // console.log("createProvableHqAccountFactory(network)", createProvableHqAccountFactory(network).fromSeed());
-  
-  
-  const factory = options.accountFactory ?? createProvableHqAccountFactory(network);
+  const factory = createProvableHqAccountFactory(network);
+
   const domainSeparator = options.domainSeparator ?? DEFAULT_DOMAIN_SEPARATOR;
   const hkdfInfoUtf8 = options.hkdfInfoUtf8 ?? DEFAULT_HKDF_INFO_UTF8;
 
@@ -46,7 +43,6 @@ export async function deriveAleoAccount(
   });
 
   const keys = await factory.fromSeed(seed);
-  // const keys = new Account
 
   return {
     source: {

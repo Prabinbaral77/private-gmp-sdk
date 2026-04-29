@@ -86,8 +86,6 @@ export type DeriveAleoAccountOptions = {
   readonly network?: AleoNetwork;
   readonly domainSeparator?: string;
   readonly hkdfInfoUtf8?: string;
-  /** Override the Aleo account factory (e.g. in tests). */
-  readonly accountFactory?: AleoAccountFactory;
 };
 
 export type DerivedAleoAccount = {
