@@ -91,13 +91,13 @@ async function buildSigner(
   if (chain === 'solana') {
     if (process.env.SOLANA_PRIVATE_KEY_B58) {
       return {
-        signer: await SolanaSigner.fromBase58SecretKey(process.env.SOLANA_PRIVATE_KEY_B58),
+        signer: SolanaSigner.fromBase58SecretKey(process.env.SOLANA_PRIVATE_KEY_B58),
         generated: null,
       };
     }
     if (process.env.SOLANA_PRIVATE_KEY_JSON) {
       return {
-        signer: SolanaSigner.fromJsonSecretKey(process.env.SOLANA_PRIVATE_KEY_JSON),
+        signer: await SolanaSigner.fromJsonSecretKey(process.env.SOLANA_PRIVATE_KEY_JSON),
         generated: null,
       };
     }
@@ -108,10 +108,11 @@ async function buildSigner(
     const bs58Mod = (await import('bs58')) as unknown as { default: Bs58Like };
     const bs58 = bs58Mod.default;
     const kp = Keypair.generate();
+    const secretKeyB58 = bs58.encode(kp.secretKey);
     return {
-      signer: new SolanaSigner({ secretKey: kp.secretKey }),
+      signer: new SolanaSigner({ secretKey: secretKeyB58 }),
       generated: {
-        SOLANA_PRIVATE_KEY_B58: bs58.encode(kp.secretKey),
+        SOLANA_PRIVATE_KEY_B58: secretKeyB58,
         SOLANA_PRIVATE_KEY_JSON: JSON.stringify(Array.from(kp.secretKey)),
       },
     };
@@ -127,12 +128,13 @@ async function buildSigner(
     if (!allowGenerate) {
       throw new Error('Missing Sui key. Set SUI_PRIVATE_KEY_HEX or SUI_PRIVATE_KEY_B64.');
     }
-    const seed = randomBytes(32);
+    const seedBytes = randomBytes(32);
+    const seedHex = Buffer.from(seedBytes).toString('hex');
     return {
-      signer: new SuiSigner({ seed }),
+      signer: new SuiSigner({ seed: seedHex }),
       generated: {
-        SUI_PRIVATE_KEY_HEX: Buffer.from(seed).toString('hex'),
-        SUI_PRIVATE_KEY_B64: Buffer.from(seed).toString('base64'),
+        SUI_PRIVATE_KEY_HEX: seedHex,
+        SUI_PRIVATE_KEY_B64: Buffer.from(seedBytes).toString('base64'),
       },
     };
   }

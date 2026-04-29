@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { AleoSourceSigner } from '@/derivation/signers/aleo';
 import { EvmSigner } from '@/derivation/signers/evm';
@@ -18,6 +18,7 @@ import {
   SUI_TEST_ADDRESS,
   SUI_TEST_PUBKEY_HEX,
   SUI_TEST_SEED,
+  SUI_TEST_SEED_HEX,
   SUI_TEST_SIG_HEX_FOR_TEST_MESSAGE,
   TEST_MESSAGE,
 } from '../fixtures/derivation-vectors';
@@ -26,33 +27,38 @@ const toHex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
 describe('SuiSigner', () => {
   it('reports chain="sui"', () => {
-    expect(new SuiSigner({ seed: SUI_TEST_SEED }).chain).toBe('sui');
+    expect(new SuiSigner({ seed: SUI_TEST_SEED_HEX }).chain).toBe('sui');
   });
 
-  it('rejects non-32-byte seeds', () => {
-    expect(() => new SuiSigner({ seed: new Uint8Array(31) })).toThrow(ValidationError);
-    expect(() => new SuiSigner({ seed: new Uint8Array(33) })).toThrow(ValidationError);
-    expect(() => new SuiSigner({ seed: 'nope' as never })).toThrow(ValidationError);
+  it('rejects malformed or wrong-length seeds', () => {
+    expect(() => new SuiSigner({ seed: '42'.repeat(31) })).toThrow(ValidationError);
+    expect(() => new SuiSigner({ seed: '42'.repeat(33) })).toThrow(ValidationError);
+    expect(() => new SuiSigner({ seed: 'nothex_'.repeat(8) })).toThrow(ValidationError);
+    expect(() => new SuiSigner({ seed: '' })).toThrow(ValidationError);
+    expect(() => new SuiSigner({ seed: new Uint8Array(32) as never })).toThrow(ValidationError);
+  });
+
+  it('accepts a 0x-prefixed seed', () => {
+    expect(new SuiSigner({ seed: `0x${SUI_TEST_SEED_HEX}` }).chain).toBe('sui');
   });
 
   it('derives the documented Sui address from a known seed', async () => {
-    const signer = new SuiSigner({ seed: SUI_TEST_SEED });
+    const signer = new SuiSigner({ seed: SUI_TEST_SEED_HEX });
     const signed = await signer.sign(TEST_MESSAGE);
     expect(signed.signerId).toBe(SUI_TEST_ADDRESS);
   });
 
   it('produces deterministic ed25519 signatures', async () => {
-    const signer = new SuiSigner({ seed: SUI_TEST_SEED });
+    const signer = new SuiSigner({ seed: SUI_TEST_SEED_HEX });
     const signed = await signer.sign(TEST_MESSAGE);
     expect(toHex(signed.signatureBytes)).toBe(SUI_TEST_SIG_HEX_FOR_TEST_MESSAGE);
     expect(signed.signatureDisplay).toBe(Buffer.from(signed.signatureBytes).toString('base64'));
   });
 
   it('fromHexSeed and fromBase64Seed agree with the constructor', async () => {
-    const hex = Buffer.from(SUI_TEST_SEED).toString('hex');
     const b64 = Buffer.from(SUI_TEST_SEED).toString('base64');
-    const a = await new SuiSigner({ seed: SUI_TEST_SEED }).sign(TEST_MESSAGE);
-    const b = await SuiSigner.fromHexSeed(hex).sign(TEST_MESSAGE);
+    const a = await new SuiSigner({ seed: SUI_TEST_SEED_HEX }).sign(TEST_MESSAGE);
+    const b = await SuiSigner.fromHexSeed(SUI_TEST_SEED_HEX).sign(TEST_MESSAGE);
     const c = await SuiSigner.fromBase64Seed(b64).sign(TEST_MESSAGE);
     expect(b.signerId).toBe(a.signerId);
     expect(c.signerId).toBe(a.signerId);
@@ -73,15 +79,31 @@ describe('SuiSigner', () => {
 });
 
 describe('SolanaSigner', () => {
-  const secretKey = Uint8Array.from(Buffer.from(SOLANA_TEST_SECRET_KEY_B64, 'base64'));
+  const secretKeyBytes = Uint8Array.from(Buffer.from(SOLANA_TEST_SECRET_KEY_B64, 'base64'));
+  let secretKey: string;
+
+  beforeAll(async () => {
+    const { default: bs58 } = await import('bs58');
+    secretKey = bs58.encode(secretKeyBytes);
+  });
 
   it('reports chain="solana"', () => {
     expect(new SolanaSigner({ secretKey }).chain).toBe('solana');
   });
 
-  it('rejects non-64-byte secret keys', () => {
-    expect(() => new SolanaSigner({ secretKey: new Uint8Array(63) })).toThrow(ValidationError);
-    expect(() => new SolanaSigner({ secretKey: 'no' as never })).toThrow(ValidationError);
+  it('rejects non-string secret keys', () => {
+    expect(() => new SolanaSigner({ secretKey: new Uint8Array(63) as never })).toThrow(
+      ValidationError,
+    );
+    expect(() => new SolanaSigner({ secretKey: '' })).toThrow(ValidationError);
+  });
+
+  it('rejects secret keys that do not decode to 64 bytes', async () => {
+    const { default: bs58 } = await import('bs58');
+    const tooShort = bs58.encode(new Uint8Array(63));
+    await expect(new SolanaSigner({ secretKey: tooShort }).sign(TEST_MESSAGE)).rejects.toThrow(
+      ValidationError,
+    );
   });
 
   it('derives the documented Solana address from a known secret key', async () => {
@@ -98,18 +120,16 @@ describe('SolanaSigner', () => {
   });
 
   it('fromJsonSecretKey matches the constructor', async () => {
-    const jsonArray = Array.from(secretKey);
+    const jsonArray = Array.from(secretKeyBytes);
     const a = await new SolanaSigner({ secretKey }).sign(TEST_MESSAGE);
-    const b = await SolanaSigner.fromJsonSecretKey(jsonArray).sign(TEST_MESSAGE);
+    const b = await (await SolanaSigner.fromJsonSecretKey(jsonArray)).sign(TEST_MESSAGE);
     expect(b.signerId).toBe(a.signerId);
     expect(toHex(b.signatureBytes)).toBe(toHex(a.signatureBytes));
   });
 
   it('fromBase58SecretKey matches the constructor', async () => {
-    const { default: bs58 } = await import('bs58');
-    const b58 = bs58.encode(secretKey);
     const a = await new SolanaSigner({ secretKey }).sign(TEST_MESSAGE);
-    const b = await (await SolanaSigner.fromBase58SecretKey(b58)).sign(TEST_MESSAGE);
+    const b = await SolanaSigner.fromBase58SecretKey(secretKey).sign(TEST_MESSAGE);
     expect(b.signerId).toBe(a.signerId);
   });
 });

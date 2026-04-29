@@ -49,30 +49,31 @@ export class SolanaSigner implements CrossChainSigner {
   public readonly chain = 'solana' as const;
 
   constructor(private readonly options: SolanaSignerOptions) {
-    if (!(options.secretKey instanceof Uint8Array)) {
-      throw new ValidationError('SolanaSigner: secretKey must be a Uint8Array.');
-    }
-    if (options.secretKey.length !== SOLANA_SECRET_KEY_LENGTH) {
-      throw new ValidationError(
-        `SolanaSigner: secretKey must be ${SOLANA_SECRET_KEY_LENGTH} bytes (received ${options.secretKey.length}).`,
-      );
+    if (typeof options.secretKey !== 'string' || options.secretKey.length === 0) {
+      throw new ValidationError('SolanaSigner: secretKey must be a base58-encoded string.');
     }
   }
 
-  static async fromBase58SecretKey(b58: string): Promise<SolanaSigner> {
+  static fromBase58SecretKey(b58: string): SolanaSigner {
+    return new SolanaSigner({ secretKey: b58 });
+  }
+
+  static async fromJsonSecretKey(json: string | readonly number[]): Promise<SolanaSigner> {
+    const arr = typeof json === 'string' ? (JSON.parse(json) as number[]) : json;
     const mod = await import('bs58');
     const bs58 = pickDefault<Bs58Like>(mod);
-    return new SolanaSigner({ secretKey: bs58.decode(b58) });
-  }
-
-  static fromJsonSecretKey(json: string | readonly number[]): SolanaSigner {
-    const arr = typeof json === 'string' ? (JSON.parse(json) as number[]) : json;
-    return new SolanaSigner({ secretKey: Uint8Array.from(arr) });
+    return new SolanaSigner({ secretKey: bs58.encode(Uint8Array.from(arr)) });
   }
 
   async sign(message: string): Promise<SignedMessage> {
     const { nacl, bs58, Keypair } = await loadDeps();
-    const keypair = Keypair.fromSecretKey(this.options.secretKey);
+    const secretKeyBytes = bs58.decode(this.options.secretKey);
+    if (secretKeyBytes.length !== SOLANA_SECRET_KEY_LENGTH) {
+      throw new ValidationError(
+        `SolanaSigner: secretKey must decode to ${SOLANA_SECRET_KEY_LENGTH} bytes (received ${secretKeyBytes.length}).`,
+      );
+    }
+    const keypair = Keypair.fromSecretKey(secretKeyBytes);
     const msgBytes = new TextEncoder().encode(message);
     const signatureBytes = nacl.sign.detached(msgBytes, keypair.secretKey);
     return {

@@ -58,29 +58,36 @@ export function suiAddressFromPublicKey(publicKey: Uint8Array): string {
 export class SuiSigner implements CrossChainSigner {
   public readonly chain = 'sui' as const;
 
-  constructor(private readonly options: SuiSignerOptions) {
-    if (!(options.seed instanceof Uint8Array)) {
-      throw new ValidationError('SuiSigner: seed must be a Uint8Array.');
+  private readonly seedBytes: Uint8Array;
+
+  constructor(options: SuiSignerOptions) {
+    if (typeof options.seed !== 'string' || options.seed.length === 0) {
+      throw new ValidationError('SuiSigner: seed must be a hex-encoded string.');
     }
-    if (options.seed.length !== SUI_SEED_LENGTH) {
+    const cleaned = options.seed.replace(/^0x/, '');
+    if (cleaned.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(cleaned)) {
+      throw new ValidationError('SuiSigner: seed must be a valid hex string.');
+    }
+    const bytes = Uint8Array.from(Buffer.from(cleaned, 'hex'));
+    if (bytes.length !== SUI_SEED_LENGTH) {
       throw new ValidationError(
-        `SuiSigner: seed must be ${SUI_SEED_LENGTH} bytes (received ${options.seed.length}).`,
+        `SuiSigner: seed must be ${SUI_SEED_LENGTH} bytes (received ${bytes.length}).`,
       );
     }
+    this.seedBytes = bytes;
   }
 
   static fromHexSeed(hex: string): SuiSigner {
-    const cleaned = hex.replace(/^0x/, '');
-    return new SuiSigner({ seed: Uint8Array.from(Buffer.from(cleaned, 'hex')) });
+    return new SuiSigner({ seed: hex });
   }
 
   static fromBase64Seed(b64: string): SuiSigner {
-    return new SuiSigner({ seed: Uint8Array.from(Buffer.from(b64, 'base64')) });
+    return new SuiSigner({ seed: Buffer.from(b64, 'base64').toString('hex') });
   }
 
   async sign(message: string): Promise<SignedMessage> {
     const nacl = await loadNacl();
-    const keypair = nacl.sign.keyPair.fromSeed(this.options.seed);
+    const keypair = nacl.sign.keyPair.fromSeed(this.seedBytes);
     const msgBytes = new TextEncoder().encode(message);
     const signatureBytes = nacl.sign.detached(msgBytes, keypair.secretKey);
     return {

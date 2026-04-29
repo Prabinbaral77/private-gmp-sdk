@@ -58,13 +58,13 @@ export type CrossChainSigner = {
 };
 
 export type SolanaSignerOptions = {
-  /** 64-byte Solana secret key (secret + pubkey concatenated). */
-  readonly secretKey: Uint8Array;
+  /** Base58-encoded 64-byte Solana secret key (secret + pubkey concatenated). */
+  readonly secretKey: string;
 };
 
 export type SuiSignerOptions = {
-  /** 32-byte ed25519 seed. */
-  readonly seed: Uint8Array;
+  /** Hex-encoded 32-byte ed25519 seed (optional `0x` prefix). */
+  readonly seed: string;
 };
 
 export type EvmSignerOptions = {

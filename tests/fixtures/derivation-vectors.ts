@@ -39,6 +39,7 @@ export const SEED_VECTORS = [
 
 /** Deterministic source-key fixtures for round-trip signer tests. */
 export const SUI_TEST_SEED = new Uint8Array(32).fill(0x42);
+export const SUI_TEST_SEED_HEX = '42'.repeat(32);
 export const SUI_TEST_PUBKEY_HEX =
   '2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12';
 export const SUI_TEST_ADDRESS =
@@ -46,15 +47,17 @@ export const SUI_TEST_ADDRESS =
 export const SUI_TEST_SIG_HEX_FOR_TEST_MESSAGE =
   'dce1c6d4a0998fb0083b61a4c4cba51c8f108e00bb1cf70e28cf533a476b804e81ace8a4d64b58138b1e498acf9d871728eecd4ad2541b942921879e02a04001';
 
-export const SOLANA_TEST_SECRET_KEY_B64 =
-  'MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMXy3n7K0Eg8rHsZeQZjW4Iso6BP+sB5KQAg5uF4YCAzg==';
 export const SOLANA_TEST_ADDRESS = '2btLJAAb1S3x6hZYdVyAePjqtQYi2ZBSRGy4569RZu8h';
 export const SOLANA_TEST_SIG_HEX_FOR_TEST_MESSAGE =
   '9905d4c66b0551159baaf037b4706f470d119909870e43c8ddc5562fb44f58a95db58a04905a884c1ecb645a307158f16a3711355ff1ade6fd74221711ab240e';
-
-export const EVM_TEST_PRIVATE_KEY = '0xe3b7bcecfeeb0ff63fc7284eb98d8f008883e9fad20fa2c2785f1e81a9474584';
-export const EVM_TEST_ADDRESS = '0xd63de8F3700966CeB68f35DD0CFB6Bc24d3f17B9';
 export const EVM_TEST_SIG_HEX_FOR_TEST_MESSAGE =
   '0x77a3f014373ba85f96a3d55d609bf704cffd6c72b31baf657389112b10add9ca4219eda400354df5fb1daa9861aa6e9fb028fd4d9806cccf5f43f65edb305d7a1b';
 
 export const TEST_MESSAGE = 'test message';
+
+//Required  
+export const EVM_TEST_PRIVATE_KEY = '0xe3b7bcecfeeb0ff63fc7284eb98d8f008883e9fad20fa2c2785f1e81a9474584';
+export const SOLANA_TEST_SECRET_KEY_B64 = "2E4BqZMU1VUhnCcErcCdbL9Pq1rrUi2RwLTJRCZwN4PAzspTEKVoxZ9bEyFgdrE1qMedDUxneXzB5PokhZnfGeqT"
+export const EVM_TEST_ADDRESS = '0xd63de8F3700966CeB68f35DD0CFB6Bc24d3f17B9';
+export const SUI_PRIVATE_KEY_HEX = '57d6fa581ef742a798009c479e07f584bb9681b230b86119dd44cd5470ec1110';
+
