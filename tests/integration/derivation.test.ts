@@ -8,6 +8,7 @@ import { SuiSigner } from '@/derivation/signers/sui';
 import { ValidationError } from '@/utils/errors';
 
 import {
+  BITCOIN_PRIVATE_KEY,
   EVM_TEST_PRIVATE_KEY,
   SUI_TEST_SEED_HEX,
   SOLANA_TEST_SECRET_KEY_B64,
@@ -15,6 +16,7 @@ import {
   STELLAR_PRIVATE_KEY
 } from '../fixtures/derivation-vectors';
 import { StellarSigner } from '@/derivation/signers/stellar';
+import { BitcoinSigner } from '@/derivation/signers/bitcoin';
 
 
 describe('deriveAleoAccount — full round trip', () => {
@@ -48,16 +50,25 @@ describe('deriveAleoAccount — full round trip', () => {
     expect(a.aleo.address).toBe(b.aleo.address);
   });
 
-  it.only('produces the same account for Stellar across runs', async () => {
+  it('produces the same account for Stellar across runs', async () => {
     const stellar = new StellarSigner({ secret: STELLAR_PRIVATE_KEY });
     const [a, b] = await Promise.all([
       deriveAleoAccount({ signer: stellar, message: 'hello' }),
       deriveAleoAccount({ signer: stellar, message: 'hello' }),
     ]);
-    console.log(a , b);
-    
+    expect(a.aleo.address).toBe(b.aleo.address);
+  });
+
+  it('produces the same account for Bitcoin across runs', async () => {
+    const bitcoin = new BitcoinSigner({ wif: BITCOIN_PRIVATE_KEY });
+    const [a, b] = await Promise.all([
+      deriveAleoAccount({ signer: bitcoin, message: 'hello' }),
+      deriveAleoAccount({ signer: bitcoin, message: 'hello' }),
+    ]);
     
     expect(a.aleo.address).toBe(b.aleo.address);
+    expect(a.source.chain).toBe('bitcoin');
+    expect(a.source.signerId.startsWith('1')).toBe(true);
   });
 
   it('different messages produce different Aleo accounts', async () => {
@@ -87,7 +98,7 @@ describe('deriveAleoAccount — full round trip', () => {
     expect(result.source.signerId.toLowerCase().startsWith('0x')).toBe(true);
 
     expect(result.derivation.domainSeparator).toBe(DEFAULT_DOMAIN_SEPARATOR);
-    expect(result.derivation.hkdfInfoUtf8).toBe('sodax/aleo-keygen/v1');
+    expect(result.derivation.hkdfInfoUtf8).toBe('verufi/aleo-keygen/v1');
     expect(result.derivation.saltSha256DomainHex).toMatch(/^[0-9a-f]{64}$/);
     expect(result.derivation.seed.length).toBe(32);
 

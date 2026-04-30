@@ -60,7 +60,7 @@
     "release": "npm run prepublishOnly && npm publish --access public"
   },
   "dependencies": {
-    "@provablehq/sdk": "^0.10.2",
+    "@provablehq/sdk": "*",
     "@sodax/sdk": "^1.5.7-beta",
     "@sodax/wallet-sdk": "^0.0.1-rc.18"
   },
@@ -95,6 +95,7 @@
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
     "@vitest/coverage-v8": "^1.4.0",
+    "bitcoinjs-message": "^2.2.0",
     "bs58": "^5.0.0",
     "dotenv": "^16.4.5",
     "eslint": "^8.57.0",

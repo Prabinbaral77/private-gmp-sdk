@@ -3,12 +3,14 @@ import { Buffer } from 'node:buffer';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { AleoSourceSigner } from '@/derivation/signers/aleo';
+import { BitcoinSigner } from '@/derivation/signers/bitcoin';
 import { EvmSigner } from '@/derivation/signers/evm';
 import { SolanaSigner } from '@/derivation/signers/solana';
 import { SuiSigner, suiAddressFromPublicKey } from '@/derivation/signers/sui';
 import { ValidationError, WalletError } from '@/utils/errors';
 
 import {
+  BITCOIN_PRIVATE_KEY,
   EVM_TEST_ADDRESS,
   EVM_TEST_PRIVATE_KEY,
   EVM_TEST_SIG_HEX_FOR_TEST_MESSAGE,
@@ -150,6 +152,36 @@ describe('EvmSigner', () => {
     expect(signed.signerId).toBe(EVM_TEST_ADDRESS);
     expect(signed.signatureDisplay).toBe(EVM_TEST_SIG_HEX_FOR_TEST_MESSAGE);
     expect(`0x${toHex(signed.signatureBytes)}`).toBe(EVM_TEST_SIG_HEX_FOR_TEST_MESSAGE.toLowerCase());
+  });
+});
+
+describe('BitcoinSigner', () => {
+  it('reports chain="bitcoin"', () => {
+    expect(new BitcoinSigner({ wif: BITCOIN_PRIVATE_KEY }).chain).toBe('bitcoin');
+  });
+
+  it('rejects empty or non-string WIFs', () => {
+    expect(() => new BitcoinSigner({ wif: '' })).toThrow(ValidationError);
+    expect(() => new BitcoinSigner({ wif: 123 as never })).toThrow(ValidationError);
+  });
+
+  it('rejects malformed WIFs at sign() time', async () => {
+    const signer = new BitcoinSigner({ wif: 'not-a-valid-wif' });
+    await expect(signer.sign(TEST_MESSAGE)).rejects.toThrow();
+  });
+
+  it('fromWif matches the constructor', async () => {
+    const a = await new BitcoinSigner({ wif: BITCOIN_PRIVATE_KEY }).sign(TEST_MESSAGE);
+    const b = await BitcoinSigner.fromWif(BITCOIN_PRIVATE_KEY).sign(TEST_MESSAGE);
+    expect(b.signerId).toBe(a.signerId);
+    expect(toHex(b.signatureBytes)).toBe(toHex(a.signatureBytes));
+  });
+
+  it('signs the same message identically across runs', async () => {
+    const signer = new BitcoinSigner({ wif: BITCOIN_PRIVATE_KEY });
+    const [a, b] = await Promise.all([signer.sign(TEST_MESSAGE), signer.sign(TEST_MESSAGE)]);
+    expect(a.signerId).toBe(b.signerId);
+    expect(toHex(a.signatureBytes)).toBe(toHex(b.signatureBytes));
   });
 });
 
