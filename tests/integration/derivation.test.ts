@@ -38,14 +38,10 @@ describe('deriveAleoAccount — full round trip', () => {
       deriveAleoAccount({ signer: sui, message: 'hello' }),
       deriveAleoAccount({ signer: sui, message: 'hello' }),
     ]);
-    // console.log("solana address a", a);
-    // console.log("solana address b", b);
-    console.log("sui address c", c);
-    // console.log("sui address d", d);
     
-    // expect(a.aleo.address).toBe(b.aleo.address);
-    // expect(c.aleo.address).toBe(d.aleo.address);
-    // expect(a.aleo.address).not.toBe(c.aleo.address);
+    expect(a.aleo.address).toBe(b.aleo.address);
+    expect(c.aleo.address).toBe(d.aleo.address);
+    expect(a.aleo.address).not.toBe(c.aleo.address);
   });
 
   it('different messages produce different Aleo accounts', async () => {

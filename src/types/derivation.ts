@@ -5,6 +5,36 @@
  * shapes consumers see.
  */
 
+// EVM-compatible chains
+// 1.  Sonic
+// 2.  Ethereum
+// 3.  Avalanche
+// 4.  BASE
+// 5.  Optimism
+// 6.  Arbitrum
+// 7.  Polygon
+// 8.  Nibiru
+// 9.  Botanix
+// 10. Kaia
+// 11. BSC
+// 12. HyperEVM
+// 13. LightLink
+// 14. RedBelly Network
+// 15. Injective                    // Native EVM (was Cosmos, now has native EVM mainnet)
+
+// EVM via sidechain/L2 (deploy on the EVM layer, not the native chain)
+// 16. NEAR [via Aurora]            // Aurora is an EVM environment ON NEAR
+
+// // Non-EVM chains
+// 17. Stellar [Encoding=xdr]
+// 18. Solana [Encoding=base58]
+// 19. SUI [Encoding=utf8]
+// 20. Bitcoin [Encoding=utf8]
+// 21. Stacks [Encoding=stacks-consensus-buff]
+// 22. Icon
+// 23. Aleo
+
+
 export type SourceChain = 'solana' | 'sui' | 'aleo' | 'evm';
 
 export type AleoNetwork = 'testnet' | 'mainnet';
