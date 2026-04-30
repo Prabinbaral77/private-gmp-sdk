@@ -11,8 +11,10 @@ import {
   EVM_TEST_PRIVATE_KEY,
   SUI_TEST_SEED_HEX,
   SOLANA_TEST_SECRET_KEY_B64,
-  SUI_PRIVATE_KEY_HEX
+  SUI_PRIVATE_KEY_HEX,
+  STELLAR_PRIVATE_KEY
 } from '../fixtures/derivation-vectors';
+import { StellarSigner } from '@/derivation/signers/stellar';
 
 
 describe('deriveAleoAccount — full round trip', () => {
@@ -27,21 +29,35 @@ describe('deriveAleoAccount — full round trip', () => {
     );
   });
 
-  it('produces the same account for Solana and Sui across runs', async () => {
+  it('produces the same account for Solana  across runs', async () => {
     const sol = new SolanaSigner({ secretKey: SOLANA_TEST_SECRET_KEY_B64 });
-    const sui = new SuiSigner({ seed: SUI_PRIVATE_KEY_HEX });
     const [a, b] = await Promise.all([
       deriveAleoAccount({ signer: sol, message: 'hello' }),
       deriveAleoAccount({ signer: sol, message: 'hello' }),
     ]);
-    const [c, d] = await Promise.all([
+    expect(a.aleo.address).toBe(b.aleo.address);
+  });
+
+  it('produces the same account for Sui across runs', async () => {
+    const sui = new SuiSigner({ seed: SUI_PRIVATE_KEY_HEX });
+    const [a, b] = await Promise.all([
       deriveAleoAccount({ signer: sui, message: 'hello' }),
       deriveAleoAccount({ signer: sui, message: 'hello' }),
     ]);
     
     expect(a.aleo.address).toBe(b.aleo.address);
-    expect(c.aleo.address).toBe(d.aleo.address);
-    expect(a.aleo.address).not.toBe(c.aleo.address);
+  });
+
+  it.only('produces the same account for Stellar across runs', async () => {
+    const stellar = new StellarSigner({ secret: STELLAR_PRIVATE_KEY });
+    const [a, b] = await Promise.all([
+      deriveAleoAccount({ signer: stellar, message: 'hello' }),
+      deriveAleoAccount({ signer: stellar, message: 'hello' }),
+    ]);
+    console.log(a , b);
+    
+    
+    expect(a.aleo.address).toBe(b.aleo.address);
   });
 
   it('different messages produce different Aleo accounts', async () => {

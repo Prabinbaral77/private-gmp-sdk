@@ -35,7 +35,7 @@
 // 23. Aleo
 
 
-export type SourceChain = 'solana' | 'sui' | 'aleo' | 'evm';
+export type SourceChain = 'solana' | 'sui' | 'aleo' | 'evm' | 'stellar';
 
 export type AleoNetwork = 'testnet' | 'mainnet';
 
@@ -97,6 +97,11 @@ export type SuiSignerOptions = {
   readonly seed: string;
 };
 
+export type StellarSignerOptions = {
+  /** Stellar StrKey-encoded ed25519 secret seed (starts with `S...`). */
+  readonly secret: string;
+};
+
 export type EvmSignerOptions = {
   /** 0x-prefixed 32-byte hex private key. */
   readonly privateKey: string;
@@ -133,3 +138,5 @@ export type DerivedAleoAccount = {
   };
   readonly aleo: { readonly network: AleoNetwork } & AleoAccountKeys;
 };
+
+

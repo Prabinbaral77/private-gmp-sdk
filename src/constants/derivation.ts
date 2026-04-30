@@ -14,10 +14,11 @@ export const SOURCE_CHAINS: readonly SourceChain[] = [
   'sui',
   'aleo',
   'evm',
+  'stellar',
 ] as const;
 
-export const DEFAULT_DOMAIN_SEPARATOR = 'SODAX|aleo-keygen|non-evm|v1';
-export const DEFAULT_HKDF_INFO_UTF8 = 'sodax/aleo-keygen/v1';
+export const DEFAULT_DOMAIN_SEPARATOR = 'Verufi|aleo-keygen|v1|{{CHAIN}}'; //TODO: test accordingly
+export const DEFAULT_HKDF_INFO_UTF8 = 'verufi/aleo-keygen/v1';
 
 /** Aleo account seed length, in bytes. */
 export const ALEO_SEED_LENGTH = 32;
@@ -28,6 +29,9 @@ export const SOLANA_SECRET_KEY_LENGTH = 64;
 /** Sui ed25519 seed length, in bytes. */
 export const SUI_SEED_LENGTH = 32;
 
+/** Stellar ed25519 seed length, in bytes. */
+export const STELLAR_SEED_LENGTH = 32;
+
 /** Sui scheme flag for ed25519 keys (used in address derivation). */
 export const SUI_SCHEME_FLAG_ED25519 = 0x00;
 
@@ -35,4 +39,4 @@ export const SUI_SCHEME_FLAG_ED25519 = 0x00;
 export const ED25519_PUBLIC_KEY_LENGTH = 32;
 
 /** Default message used when none is provided to the CLI. */
-export const DEFAULT_DERIVATION_MESSAGE = 'Sign to derive deterministic Aleo wallet';
+export const DEFAULT_DERIVATION_MESSAGE = 'Verufi: Sign to derive deterministic Aleo wallet';

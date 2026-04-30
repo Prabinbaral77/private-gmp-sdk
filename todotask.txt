@@ -1,0 +1,10 @@
+//Add support for all non evm chains
+//Add record scanner to get private record after claim
+//Add aleo contract call with fee sponsership mechainism
+//Add create commitment functionalities
+//To list user commitment. fetch from sonic aleo dapp hub contract key=> user sonic address value=> commitments
+//scan eeach commitment from aleo contract to check wheather it is claimed or not.
+
+In Aleo Dapp Contract in sonic, 
+create the mapping to store user commitment hash
+create another mapping with key as commitment hash and struct which contains fields like source chain, token, nonce
