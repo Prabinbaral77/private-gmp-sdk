@@ -10,13 +10,14 @@ import { ValidationError } from '@/utils/errors';
 import {
   BITCOIN_PRIVATE_KEY,
   EVM_TEST_PRIVATE_KEY,
-  SUI_TEST_SEED_HEX,
+  STACKS_PRIVATE_KEY,
   SOLANA_TEST_SECRET_KEY_B64,
   SUI_PRIVATE_KEY_HEX,
   STELLAR_PRIVATE_KEY
 } from '../fixtures/derivation-vectors';
 import { StellarSigner } from '@/derivation/signers/stellar';
 import { BitcoinSigner } from '@/derivation/signers/bitcoin';
+import { StacksSigner } from '@/derivation/signers/stacks';
 
 
 describe('deriveAleoAccount — full round trip', () => {
@@ -65,10 +66,25 @@ describe('deriveAleoAccount — full round trip', () => {
       deriveAleoAccount({ signer: bitcoin, message: 'hello' }),
       deriveAleoAccount({ signer: bitcoin, message: 'hello' }),
     ]);
-    
+
     expect(a.aleo.address).toBe(b.aleo.address);
     expect(a.source.chain).toBe('bitcoin');
     expect(a.source.signerId.startsWith('1')).toBe(true);
+  });
+
+  it('produces the same account for Stacks across runs', async () => {
+   
+    const stacks = new StacksSigner({ privateKey: STACKS_PRIVATE_KEY });
+    const [a, b] = await Promise.all([
+      deriveAleoAccount({ signer: stacks, message: 'hello' }),
+      deriveAleoAccount({ signer: stacks, message: 'hello' }),
+    ]);
+
+    console.log('Derived Aleo address a:', a.aleo.address);
+    console.log('Derived Aleo address b:', b.aleo.address);
+    expect(a.aleo.address).toBe(b.aleo.address);
+    expect(a.source.chain).toBe('stacks');
+    expect(a.source.signerId.startsWith('SP')).toBe(true);
   });
 
   it('different messages produce different Aleo accounts', async () => {
@@ -121,3 +137,4 @@ describe('deriveAleoAccount — full round trip', () => {
     });
   });
 });
+

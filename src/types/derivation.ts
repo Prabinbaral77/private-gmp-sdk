@@ -35,7 +35,7 @@
 // 23. Aleo
 
 
-export type SourceChain = 'solana' | 'sui' | 'aleo' | 'evm' | 'stellar' | 'bitcoin';
+export type SourceChain = 'solana' | 'sui' | 'aleo' | 'evm' | 'stellar' | 'bitcoin' | 'stacks';
 
 export type AleoNetwork = 'testnet' | 'mainnet';
 
@@ -110,6 +110,15 @@ export type EvmSignerOptions = {
 export type BitcoinSignerOptions = {
   /** WIF-encoded Bitcoin private key (mainnet starts with `K`/`L`/`5`, testnet with `c`/`9`). */
   readonly wif: string;
+  /** Network used for address derivation. Defaults to `'mainnet'`. */
+  readonly network?: 'mainnet' | 'testnet';
+};
+
+export type StacksSignerOptions = {
+  /** Stacks secp256k1 private key as hex (32 bytes; optional `01` compressed-flag suffix). */
+  readonly privateKey: string;
+  /** Network used for address derivation. Defaults to `'mainnet'`. */
+  readonly network?: 'mainnet' | 'testnet';
 };
 
 export type AleoSourceSignerOptions = {

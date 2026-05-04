@@ -6,11 +6,13 @@ import { AleoSourceSigner } from '@/derivation/signers/aleo';
 import { BitcoinSigner } from '@/derivation/signers/bitcoin';
 import { EvmSigner } from '@/derivation/signers/evm';
 import { SolanaSigner } from '@/derivation/signers/solana';
+import { StacksSigner } from '@/derivation/signers/stacks';
 import { SuiSigner, suiAddressFromPublicKey } from '@/derivation/signers/sui';
 import { ValidationError, WalletError } from '@/utils/errors';
 
 import {
   BITCOIN_PRIVATE_KEY,
+  STACKS_PRIVATE_KEY,
   EVM_TEST_ADDRESS,
   EVM_TEST_PRIVATE_KEY,
   EVM_TEST_SIG_HEX_FOR_TEST_MESSAGE,
@@ -179,6 +181,46 @@ describe('BitcoinSigner', () => {
 
   it('signs the same message identically across runs', async () => {
     const signer = new BitcoinSigner({ wif: BITCOIN_PRIVATE_KEY });
+    const [a, b] = await Promise.all([signer.sign(TEST_MESSAGE), signer.sign(TEST_MESSAGE)]);
+    expect(a.signerId).toBe(b.signerId);
+    expect(toHex(a.signatureBytes)).toBe(toHex(b.signatureBytes));
+  });
+});
+
+describe('StacksSigner', () => {
+  it('reports chain="stacks"', () => {
+    expect(new StacksSigner({ privateKey: STACKS_PRIVATE_KEY }).chain).toBe('stacks');
+  });
+
+  it('rejects empty or non-string private keys', () => {
+    expect(() => new StacksSigner({ privateKey: '' })).toThrow(ValidationError);
+    expect(() => new StacksSigner({ privateKey: 123 as never })).toThrow(ValidationError);
+  });
+
+  it('rejects malformed hex private keys', () => {
+    expect(() => new StacksSigner({ privateKey: 'zz'.repeat(32) })).toThrow(ValidationError);
+    expect(() => new StacksSigner({ privateKey: 'ab'.repeat(31) })).toThrow(ValidationError);
+  });
+
+  it('accepts a 0x-prefixed private key', () => {
+    expect(new StacksSigner({ privateKey: `0x${STACKS_PRIVATE_KEY}` }).chain).toBe('stacks');
+  });
+
+  it('derives the expected mainnet address from a known private key', async () => {
+    const signer = new StacksSigner({ privateKey: STACKS_PRIVATE_KEY });
+    const signed = await signer.sign(TEST_MESSAGE);
+    expect(signed.signerId).toBe('SP1WNA65XE3M665RJ9AC81J18XPMJ5QC5XJDHWXE');
+  });
+
+  it('fromPrivateKey matches the constructor', async () => {
+    const a = await new StacksSigner({ privateKey: STACKS_PRIVATE_KEY }).sign(TEST_MESSAGE);
+    const b = await StacksSigner.fromPrivateKey(STACKS_PRIVATE_KEY).sign(TEST_MESSAGE);
+    expect(b.signerId).toBe(a.signerId);
+    expect(toHex(b.signatureBytes)).toBe(toHex(a.signatureBytes));
+  });
+
+  it('signs the same message identically across runs', async () => {
+    const signer = new StacksSigner({ privateKey: STACKS_PRIVATE_KEY });
     const [a, b] = await Promise.all([signer.sign(TEST_MESSAGE), signer.sign(TEST_MESSAGE)]);
     expect(a.signerId).toBe(b.signerId);
     expect(toHex(a.signatureBytes)).toBe(toHex(b.signatureBytes));

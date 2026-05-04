@@ -16,6 +16,7 @@ export const SOURCE_CHAINS: readonly SourceChain[] = [
   'evm',
   'stellar',
   'bitcoin',
+  'stacks',
 ] as const;
 
 export const DEFAULT_DOMAIN_SEPARATOR = 'Verufi|aleo-keygen|v1|{{CHAIN}}'; //TODO: test accordingly
