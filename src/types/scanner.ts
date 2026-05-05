@@ -8,6 +8,8 @@ export type ScanFilter = {
   readonly startBlock?: number;
   readonly endBlock?: number;
   readonly limit?: number;
+  readonly apiKey: string;
+  readonly consumerId: string;
 };
 
 export type ScannedRecord = {

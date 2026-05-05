@@ -2,11 +2,7 @@ import { RecordScannerOptions, ScanFilter, ScannedRecord, ScanResult, SdkModule 
 import { filterRecords } from './filter-record';
 import { resolveCredentials } from './resolve-credentials';
 import { scannerError } from './error';
-
-
-const DEFAULT_SCANNER_URL = 'https://api.provable.com';
-const DEFAULT_HOST = 'https://api.provable.com/v2';
-const DEFAULT_LIMIT = 20;
+import { DEFAULT_HOST, DEFAULT_LIMIT, DEFAULT_SCANNER_URL } from '@/constants/scanner';
 
 /**
  * Scan owned Aleo records via either the hosted indexer or the local SDK.
@@ -23,20 +19,25 @@ export class RecordScannerService {
 
   constructor(private readonly options: RecordScannerOptions) {}
 
+  async getCredentials(): Promise<{ apiKey: string; consumerId: string }> {
+    const {Account} = await this.loadSdk();
+    const scannerUrl = this.options.scannerUrl ?? DEFAULT_SCANNER_URL;
+    return await resolveCredentials(scannerUrl, this.options, new Account({privateKey: this.options.privateKey}));
+  }
+
   async hosted(filter: ScanFilter): Promise<ScanResult> {
     const sdk = await this.loadSdk();
     const { Account, RecordScanner } = sdk;
     const account = new Account({ privateKey: this.options.privateKey });
     const scannerUrl = this.options.scannerUrl ?? DEFAULT_SCANNER_URL;
-    const { apiKey, consumerId } = await resolveCredentials(scannerUrl, this.options);
 
     const scanner = new RecordScanner({
       url: scannerUrl,
       account,
       decryptEnabled: true,
       autoReRegister: true,
-      apiKey,
-      consumerId,
+      apiKey: filter.apiKey,
+      consumerId: filter.consumerId,
     });
 
     const reg = await scanner.registerEncrypted(account.viewKey(), filter.startBlock ?? 0);
@@ -75,17 +76,30 @@ export class RecordScannerService {
 
   async sdk(filter: ScanFilter): Promise<ScanResult> {
     const sdk = await this.loadSdk();
-    const { Account, AleoNetworkClient, NetworkRecordProvider } = sdk;
+    const { Account, RecordScanner } = sdk;
     const account = new Account({ privateKey: this.options.privateKey });
-    const networkClient = new AleoNetworkClient(this.options.host ?? DEFAULT_HOST);
-    const provider = new NetworkRecordProvider(account, networkClient);
+    const recordScanner = new RecordScanner({
+      url: this.options.host ?? DEFAULT_HOST,
+    });
+    recordScanner.setApiKey(filter.apiKey);
+    recordScanner.setConsumerId(filter.consumerId);
+    // Encrypted registration (recommended)
+    const regResult = await recordScanner.registerEncrypted(account.viewKey(), 0);
+    if (!regResult.ok) {
+      throw new Error(regResult.error?.message ?? `Registration failed: ${regResult.status}`);
+    }
+    const uuid = regResult.data.uuid;
 
-    const found = (await provider.findRecords({
+
+    const found = (await recordScanner.findRecords({
+      uuid,
       unspent: false,
       startHeight: filter.startBlock ?? 0,
       endHeight: filter.endBlock,
       programs: [...filter.programs],
-    } as Parameters<typeof provider.findRecords>[0])) as ScannedRecord[];
+    } as Parameters<typeof recordScanner.findRecords>[0])) as ScannedRecord[];
+    console.log(`SDK found ${found.length} records matching programs ${filter.programs.join(',')}`);
+
 
     const records = filterRecords(found, filter.programs, filter.records);
     const limit = filter.limit ?? DEFAULT_LIMIT;

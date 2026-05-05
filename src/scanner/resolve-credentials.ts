@@ -1,13 +1,15 @@
 import { NetworkError } from "@/utils";
+import { Account } from "@provablehq/sdk";
 
 export const resolveCredentials =
   async (
     scannerUrl: string,
     options: { apiKey?: string; consumerId?: string; fetchImpl?: typeof fetch },
+    account: Account
   ): Promise<{ apiKey: string; consumerId: string }> => {
     const { apiKey, consumerId } = options;
     if (apiKey && consumerId) return { apiKey, consumerId };
-    const created = await createConsumer(scannerUrl, options);
+    const created = await createConsumer(scannerUrl, options, account.address().toString());
     return {
       apiKey: apiKey ?? created.apiKey,
       consumerId: consumerId ?? created.consumerId,
@@ -17,7 +19,8 @@ export const resolveCredentials =
 
 export const createConsumer = async (
     scannerUrl: string,
-    options: { fetchImpl?: typeof fetch }
+    options: { fetchImpl?: typeof fetch },
+    address: string
   ): Promise<{ apiKey: string; consumerId: string }> => {
     const fetchImpl =
       options.fetchImpl ??
@@ -25,12 +28,13 @@ export const createConsumer = async (
     if (!fetchImpl) {
       throw new NetworkError('No fetch implementation available. Pass options.fetchImpl.');
     }
-    const url = `${scannerUrl.replace(/\/$/, '')}/consumers`;
+    const url = new URL('/consumers', scannerUrl).toString();
     const res = await fetchImpl(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ username: `user${Date.now()}` }),
+      body: JSON.stringify({ username: `${address}${Date.now()}` }),
     });
+   
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       throw new NetworkError(`Failed to create consumer: status=${res.status}, body=${body}`);
