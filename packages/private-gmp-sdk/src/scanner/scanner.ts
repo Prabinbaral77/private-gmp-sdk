@@ -32,7 +32,7 @@ export class RecordScannerService {
     const scannerUrl = this.options.scannerUrl ?? DEFAULT_SCANNER_URL;
 
     const scanner = new RecordScanner({
-      url: scannerUrl,
+      url: `${scannerUrl}`,
       account,
       decryptEnabled: true,
       autoReRegister: true,

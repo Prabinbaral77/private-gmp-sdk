@@ -1,129 +1,28 @@
 {
-  "name": "@venture23-aleo/aleo-sdk",
-  "version": "0.1.0",
-  "description": "TypeScript SDK to support Private GMP on the top of sodax SDK",
+  "name": "@venture23-aleo/aleo-sdk-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Monorepo for the Venture23 Aleo SDK and its test harness.",
   "license": "MIT",
   "author": "Venture23 Aleo Team",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./encoding": {
-      "types": "./dist/encoding/index.d.ts",
-      "import": "./dist/encoding/index.js",
-      "require": "./dist/encoding/index.cjs"
-    },
-    "./types": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.js",
-      "require": "./dist/types/index.cjs"
-    },
-    "./derivation": {
-      "types": "./dist/derivation/index.d.ts",
-      "import": "./dist/derivation/index.js",
-      "require": "./dist/derivation/index.cjs"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
   "engines": {
     "node": ">=18.17"
   },
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "build": "tsup",
-    "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly",
-    "clean": "rimraf dist coverage .turbo",
-    "dev": "tsup --watch",
-    "lint": "eslint \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"examples/**/*.ts\"",
-    "lint:fix": "npm run lint -- --fix",
+    "build": "pnpm -r --filter=./packages/* run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json,yaml,yml}\"",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration",
-    "test:coverage": "vitest run --coverage",
-    "example:basic": "tsx examples/basic-call.ts",
-    "example:transfer": "tsx examples/transfer.ts",
-    "derive": "tsx scripts/derive-aleo-account.ts",
-    "prepublishOnly": "npm run clean && npm run lint && npm run typecheck && npm run test && npm run build",
-    "release": "npm run prepublishOnly && npm publish --access public"
-  },
-  "dependencies": {
-    "@provablehq/sdk": "*",
-    "@sodax/sdk": "^1.5.7-beta",
-    "@sodax/wallet-sdk": "^0.0.1-rc.18"
-  },
-  "peerDependencies": {
-    "@provablehq/sdk": "*",
-    "@solana/web3.js": "*",
-    "bs58": "*",
-    "ethers": "*",
-    "tweetnacl": "*"
-  },
-  "peerDependenciesMeta": {
-    "@provablehq/sdk": {
-      "optional": true
-    },
-    "@solana/web3.js": {
-      "optional": true
-    },
-    "bs58": {
-      "optional": true
-    },
-    "ethers": {
-      "optional": true
-    },
-    "tweetnacl": {
-      "optional": true
-    }
+    "implementation": "pnpm --filter @venture23-aleo/implementation run start",
+    "derive": "pnpm --filter @venture23-aleo/implementation run start derive",
+    "scan": "pnpm --filter @venture23-aleo/implementation run start scan",
+    "sponsor:onchain": "pnpm --filter @venture23-aleo/implementation run start sponsor onchain",
+    "sponsor:delegated": "pnpm --filter @venture23-aleo/implementation run start sponsor delegated"
   },
   "devDependencies": {
-    "@provablehq/sdk": "^0.10.3",
-    "@solana/web3.js": "^1.95.0",
-    "@types/node": "^20.11.30",
-    "@typescript-eslint/eslint-plugin": "^7.4.0",
-    "@typescript-eslint/parser": "^7.4.0",
-    "@vitest/coverage-v8": "^1.4.0",
-    "bitcoinjs-message": "^2.2.0",
-    "bs58": "^5.0.0",
-    "dotenv": "^16.4.5",
-    "eslint": "^8.57.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-unused-imports": "^3.1.0",
-    "ethers": "^6.11.0",
-    "prettier": "^3.2.5",
-    "rimraf": "^5.0.5",
-    "tsup": "^8.0.2",
-    "tsx": "^4.7.1",
-    "tweetnacl": "^1.0.3",
-    "typescript": "^5.4.3",
-    "vitest": "^1.4.0"
-  },
-  "keywords": [
-    "aleo",
-    "sdk",
-    "blockchain",
-    "smart-contracts",
-    "zero-knowledge",
-    "leo",
-    "sodax",
-    "wallet",
-    "privacy",
-    "private-gmp"
-  ],
-  "publishConfig": {
-    "access": "public"
+    "prettier": "^3.2.5"
   }
 }

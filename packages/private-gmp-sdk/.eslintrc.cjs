@@ -57,7 +57,7 @@ module.exports = {
   ignorePatterns: ['dist', 'coverage', 'node_modules', '*.cjs'],
   overrides: [
     {
-      files: ['tests/**/*.ts', 'examples/**/*.ts'],
+      files: ['examples/**/*.ts'],
       rules: {
         'no-console': 'off',
         '@typescript-eslint/no-explicit-any': 'off',
@@ -65,7 +65,7 @@ module.exports = {
       },
     },
     {
-      files: ['*.config.ts', 'tsup.config.ts', 'vitest.config.ts'],
+      files: ['*.config.ts', 'tsup.config.ts'],
       rules: { 'import/no-default-export': 'off' },
     },
   ],

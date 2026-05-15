@@ -35,10 +35,9 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@tests/*": ["tests/*"]
+      "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*", "examples/**/*", "scripts/**/*"],
+  "include": ["src/**/*", "examples/**/*", "scripts/**/*"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

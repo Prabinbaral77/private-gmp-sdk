@@ -23,5 +23,10 @@ export default defineConfig({
     'bs58',
     'ethers',
     'tweetnacl',
+    '@bitcoinerlab/secp256k1',
+    'ecpair',
+    'bitcoinjs-lib',
+    '@stacks/transactions',
+    '@stellar/stellar-sdk',
   ],
 });
