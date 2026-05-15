@@ -1,0 +1,29 @@
+{
+  "name": "@venture23-aleo/implementation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local CLI app that exercises every flow exposed by @venture23-aleo/private-gmp-sdk.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "start": "tsx --tsconfig tsconfig.json src/index.ts",
+    "derive": "tsx --tsconfig tsconfig.json src/index.ts derive",
+    "scan": "tsx --tsconfig tsconfig.json src/index.ts scan",
+    "sponsor:onchain": "tsx --tsconfig tsconfig.json src/index.ts sponsor onchain",
+    "sponsor:delegated": "tsx --tsconfig tsconfig.json src/index.ts sponsor delegated",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@venture23-aleo/private-gmp-sdk": "workspace:*",
+    "@provablehq/sdk": "^0.10.3",
+    "@solana/web3.js": "^1.95.0",
+    "bs58": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.3"
+  }
+}
