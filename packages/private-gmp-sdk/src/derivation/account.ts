@@ -54,15 +54,5 @@ export function createProvableHqAccountFactory(network: AleoNetwork): AleoAccoun
       const { Account } = await ensure();
       return toKeys(new Account({ privateKey }));
     },
-    async sign(privateKey, message) {
-      const { Account } = await ensure();
-      const account = privateKey ? new Account({ privateKey }) : new Account();
-      const sig = account.sign(message);
-      return {
-        privateKey: account.privateKey().to_string(),
-        address: account.address().to_string(),
-        signature: sig.to_string(),
-      };
-    },
   };
 }

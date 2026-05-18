@@ -2,8 +2,8 @@ import { createHash, hkdfSync } from 'node:crypto';
 
 import {
   ALEO_SEED_LENGTH,
-  DEFAULT_DOMAIN_SEPARATOR,
   DEFAULT_HKDF_INFO_UTF8,
+  resolveDomainSeparator,
   SOURCE_CHAINS,
 } from '../constants/derivation';
 import { ValidationError } from '../utils/errors';
@@ -48,8 +48,8 @@ export function deriveAleoSeed(input: DeriveAleoSeedInput): Uint8Array {
     throw new ValidationError('message must be a string.');
   }
 
-  const domain = input.domainSeparator ?? DEFAULT_DOMAIN_SEPARATOR;
-  const info = input.hkdfInfoUtf8 ?? DEFAULT_HKDF_INFO_UTF8;
+  const domain = resolveDomainSeparator(input.chain);
+  const info = DEFAULT_HKDF_INFO_UTF8;
   const salt = domainSalt(domain);
   const msgHash = createHash('sha256').update(utf8(input.message)).digest();
   const ikm = createHash('sha256')

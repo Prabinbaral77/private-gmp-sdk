@@ -22,6 +22,11 @@ export const SOURCE_CHAINS: readonly SourceChain[] = [
 export const DEFAULT_DOMAIN_SEPARATOR = 'Verufi|aleo-keygen|v1|{{CHAIN}}'; //TODO: test accordingly
 export const DEFAULT_HKDF_INFO_UTF8 = 'verufi/aleo-keygen/v1';
 
+/** Resolve the `{{CHAIN}}` placeholder in {@link DEFAULT_DOMAIN_SEPARATOR}. */
+export function resolveDomainSeparator(chain: SourceChain): string {
+  return DEFAULT_DOMAIN_SEPARATOR.replace('{{CHAIN}}', chain);
+}
+
 /** Aleo account seed length, in bytes. */
 export const ALEO_SEED_LENGTH = 32;
 

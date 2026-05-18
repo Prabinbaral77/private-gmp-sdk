@@ -16,17 +16,5 @@ export default defineConfig({
   treeshake: true,
   target: 'node18',
   outDir: 'dist',
-  external: [
-    '@sodax/wallet-sdk',
-    '@provablehq/sdk',
-    '@solana/web3.js',
-    'bs58',
-    'ethers',
-    'tweetnacl',
-    '@bitcoinerlab/secp256k1',
-    'ecpair',
-    'bitcoinjs-lib',
-    '@stacks/transactions',
-    '@stellar/stellar-sdk',
-  ],
+  external: ['@sodax/wallet-sdk', '@provablehq/sdk'],
 });

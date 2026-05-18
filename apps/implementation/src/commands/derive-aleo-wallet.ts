@@ -1,59 +1,79 @@
- import { Buffer } from 'node:buffer';
+import { Buffer } from 'node:buffer';
 import { randomBytes } from 'node:crypto';
+
 import { Keypair } from '@solana/web3.js';
 import { Wallet } from 'ethers';
 import {
-  AleoSourceSigner,
-  BitcoinSigner,
-  EvmSigner,
-  SolanaSigner,
-  StacksSigner,
-  StellarSigner,
-  SuiSigner,
+  AleoAccountDeriver,
   assertSourceChain,
-  deriveAleoAccount,
 } from '@venture23-aleo/private-gmp-sdk';
-import type { AleoNetwork, CrossChainSigner, SourceChain } from '@venture23-aleo/private-gmp-sdk';
+import type {
+  AleoNetwork,
+  SignedMessage,
+  SourceChain,
+} from '@venture23-aleo/private-gmp-sdk';
 import bs58 from 'bs58';
 
+import {
+  generateStellarSecret,
+  signAleoMessage,
+  signBitcoinMessage,
+  signEvmMessage,
+  signSolanaMessage,
+  signStellarMessage,
+  signSuiMessage,
+  StacksSigner,
+} from '../signers/index.js';
 import { parseArgs, printJson } from '../utils.js';
 
 // pnpm derive --chain solana "message"
 const DEFAULT_MESSAGE = 'private-gmp-sdk implementation: derive deterministic Aleo account';
 
-function buildSigner(chain: SourceChain, network: AleoNetwork): CrossChainSigner {
+async function sign(
+  chain: SourceChain,
+  message: string,
+  network: AleoNetwork,
+): Promise<SignedMessage> {
   if (chain === 'evm') {
-    const pk = process.env.EVM_PRIVATE_KEY ?? Wallet.createRandom().privateKey;
-    return new EvmSigner({ privateKey: pk });
+    const privateKey = process.env.EVM_PRIVATE_KEY ?? Wallet.createRandom().privateKey;
+    return signEvmMessage(privateKey, message);
   }
+
   if (chain === 'solana') {
-    const b58 = process.env.SOLANA_PRIVATE_KEY_B58;
-    if (b58) return SolanaSigner.fromBase58SecretKey(b58);
-    const kp = Keypair.generate();
-    return new SolanaSigner({ secretKey: bs58.encode(kp.secretKey) });
+    const secretKeyB58 =
+      process.env.SOLANA_PRIVATE_KEY_B58 ?? bs58.encode(Keypair.generate().secretKey);
+    return signSolanaMessage(secretKeyB58, message);
   }
+
   if (chain === 'sui') {
-    const hex = process.env.SUI_PRIVATE_KEY_HEX;
-    if (hex) return SuiSigner.fromHexSeed(hex);
-    return new SuiSigner({ seed: Buffer.from(randomBytes(32)).toString('hex') });
+    const seedHex =
+      process.env.SUI_PRIVATE_KEY_HEX ?? Buffer.from(randomBytes(32)).toString('hex');
+    return signSuiMessage(seedHex, message);
   }
+
   if (chain === 'bitcoin') {
-    const wif = process.env.BTC_WIF;
-    if (!wif) throw new Error('Set BTC_WIF for chain=bitcoin');
-    return new BitcoinSigner({ wif });
+    const wif = process.env.BITCOIN_WIF;
+    if (!wif) throw new Error('Set BITCOIN_WIF for chain=bitcoin');
+    return signBitcoinMessage(wif, message);
   }
+
   if (chain === 'stellar') {
-    const secret = process.env.STELLAR_SECRET_KEY;
-    if (!secret) throw new Error('Set STELLAR_SECRET_KEY for chain=stellar');
-    return new StellarSigner({ secret });
+    const secret = process.env.STELLAR_SECRET_KEY ?? generateStellarSecret();
+    return signStellarMessage(secret, message);
   }
+
   if (chain === 'stacks') {
     const pk = process.env.STACKS_PRIVATE_KEY;
     if (!pk) throw new Error('Set STACKS_PRIVATE_KEY for chain=stacks');
-    return new StacksSigner({ privateKey: pk });
+    const stacksNetwork =
+      (process.env.STACKS_NETWORK ?? 'mainnet').toLowerCase() === 'testnet'
+        ? 'testnet'
+        : 'mainnet';
+    return StacksSigner.fromPrivateKey(pk, stacksNetwork).sign(message);
   }
+
   const sourcePk = process.env.ALEO_SOURCE_PRIVATE_KEY;
-  return new AleoSourceSigner({
+  return signAleoMessage(message, {
     network,
     ...(sourcePk !== undefined && { privateKey: sourcePk }),
   });
@@ -67,8 +87,15 @@ export async function runDerive(argv: string[]): Promise<void> {
     (process.env.ALEO_NETWORK ?? 'testnet').toLowerCase() === 'mainnet' ? 'mainnet' : 'testnet';
   const message = args.positional.join(' ').trim() || DEFAULT_MESSAGE;
 
-  const signer = buildSigner(chain, network);
-  const result = await deriveAleoAccount({ signer, message, network });
+  const signed = await sign(chain, message, network);
+  const deriver = new AleoAccountDeriver({ network });
+  const result = await deriver.derive({
+    chain,
+    signerId: signed.signerId,
+    signatureBytes: signed.signatureBytes,
+    signatureDisplay: signed.signatureDisplay,
+    message,
+  });
 
   printJson({
     source: result.source,
@@ -81,7 +108,7 @@ export async function runDerive(argv: string[]): Promise<void> {
     derivation: {
       domainSeparator: result.derivation.domainSeparator,
       hkdfInfoUtf8: result.derivation.hkdfInfoUtf8,
-      seeds: result.derivation.seed
+      seeds: result.derivation.seed,
     },
   });
 }

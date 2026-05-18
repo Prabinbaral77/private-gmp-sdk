@@ -50,7 +50,6 @@
     "typecheck": "tsc --noEmit",
     "example:basic": "tsx examples/basic-call.ts",
     "example:transfer": "tsx examples/transfer.ts",
-    "derive": "tsx scripts/derive-aleo-account.ts",
     "prepublishOnly": "npm run clean && npm run lint && npm run typecheck && npm run build",
     "release": "npm run prepublishOnly && npm publish --access public"
   },
@@ -60,53 +59,25 @@
     "@sodax/wallet-sdk": "^0.0.1-rc.18"
   },
   "peerDependencies": {
-    "@bitcoinerlab/secp256k1": "*",
-    "@provablehq/sdk": "*",
-    "@solana/web3.js": "*",
-    "@stacks/transactions": "*",
-    "@stellar/stellar-sdk": "*",
-    "bitcoinjs-lib": "*",
-    "bs58": "*",
-    "ecpair": "*",
-    "ethers": "*",
-    "tweetnacl": "*"
+    "@provablehq/sdk": "*"
   },
   "peerDependenciesMeta": {
-    "@bitcoinerlab/secp256k1": { "optional": true },
-    "@provablehq/sdk": { "optional": true },
-    "@solana/web3.js": { "optional": true },
-    "@stacks/transactions": { "optional": true },
-    "@stellar/stellar-sdk": { "optional": true },
-    "bitcoinjs-lib": { "optional": true },
-    "bs58": { "optional": true },
-    "ecpair": { "optional": true },
-    "ethers": { "optional": true },
-    "tweetnacl": { "optional": true }
+    "@provablehq/sdk": { "optional": true }
   },
   "devDependencies": {
-    "@bitcoinerlab/secp256k1": "^1.1.1",
     "@provablehq/sdk": "^0.10.3",
-    "@solana/web3.js": "^1.95.0",
-    "@stacks/transactions": "^7.0.0",
-    "@stellar/stellar-sdk": "^12.0.0",
     "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
-    "bitcoinjs-lib": "^6.1.5",
-    "bitcoinjs-message": "^2.2.0",
-    "bs58": "^5.0.0",
     "dotenv": "^16.4.5",
-    "ecpair": "^2.1.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-unused-imports": "^3.1.0",
-    "ethers": "^6.11.0",
     "prettier": "^3.2.5",
     "rimraf": "^5.0.5",
     "tsup": "^8.0.2",
     "tsx": "^4.7.1",
-    "tweetnacl": "^1.0.3",
     "typescript": "^5.4.3"
   },
   "keywords": [

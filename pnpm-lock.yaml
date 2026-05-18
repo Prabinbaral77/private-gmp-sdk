@@ -14,24 +14,45 @@ importers:
 
   apps/implementation:
     dependencies:
+      '@bitcoinerlab/secp256k1':
+        specifier: ^1.1.1
+        version: 1.2.0
       '@provablehq/sdk':
         specifier: ^0.10.3
         version: 0.10.5
       '@solana/web3.js':
         specifier: ^1.95.0
         version: 1.98.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      '@stacks/transactions':
+        specifier: ^7.0.0
+        version: 7.3.1
+      '@stellar/stellar-sdk':
+        specifier: ^12.0.0
+        version: 12.3.0
       '@venture23-aleo/private-gmp-sdk':
         specifier: workspace:*
         version: link:../../packages/private-gmp-sdk
+      bitcoinjs-lib:
+        specifier: ^6.1.5
+        version: 6.1.7
+      bitcoinjs-message:
+        specifier: ^2.2.0
+        version: 2.2.0
       bs58:
         specifier: ^5.0.0
         version: 5.0.0
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
+      ecpair:
+        specifier: ^2.1.0
+        version: 2.1.0
       ethers:
         specifier: ^6.11.0
         version: 6.16.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      tweetnacl:
+        specifier: ^1.0.3
+        version: 1.0.3
     devDependencies:
       '@types/node':
         specifier: ^20.11.30

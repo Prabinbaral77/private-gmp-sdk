@@ -45,8 +45,6 @@ export type DeriveAleoSeedInput = {
   readonly signerId: string;
   readonly signatureBytes: Uint8Array;
   readonly message: string;
-  readonly domainSeparator?: string;
-  readonly hkdfInfoUtf8?: string;
 };
 
 /** Aleo account material returned by an {@link AleoAccountFactory}. */
@@ -64,14 +62,15 @@ export type AleoAccountKeys = {
 export type AleoAccountFactory = {
   fromSeed(seed: Uint8Array): AleoAccountKeys | Promise<AleoAccountKeys>;
   fromPrivateKey?(privateKey: string): AleoAccountKeys | Promise<AleoAccountKeys>;
-  /** Sign raw bytes with a private key (or a freshly generated one). */
-  sign?(
-    privateKey: string | undefined,
-    message: Uint8Array,
-  ): Promise<{ privateKey: string; address: string; signature: string }>;
 };
 
-/** Result of a foreign-chain message signature, fed into the seed derivation. */
+/**
+ * A foreign-chain message signature in the form the seed derivation consumes.
+ *
+ * Producers (wallets, the implementation app's signing helpers, etc.) are
+ * responsible for converting their chain-native signature encoding to raw
+ * bytes — the SDK no longer ships per-chain decoders.
+ */
 export type SignedMessage = {
   /** Stable identifier for the signer on its source chain (address / pubkey). */
   readonly signerId: string;
@@ -81,60 +80,21 @@ export type SignedMessage = {
   readonly signatureDisplay: string;
 };
 
-/** A signer for one of the supported source chains. */
-export type CrossChainSigner = {
+/** Constructor options for {@link ../derivation/AleoAccountDeriver}. */
+export type AleoAccountDeriverOptions = {
+  readonly network?: AleoNetwork;
+  /** Inject a custom account factory (e.g. a deterministic stub in tests). */
+  readonly accountFactory?: AleoAccountFactory;
+};
+
+/** Per-call input to {@link ../derivation/AleoAccountDeriver#derive}. */
+export type DeriveAleoAccountInput = {
   readonly chain: SourceChain;
-  sign(message: string): Promise<SignedMessage>;
-};
-
-export type SolanaSignerOptions = {
-  /** Base58-encoded 64-byte Solana secret key (secret + pubkey concatenated). */
-  readonly secretKey: string;
-};
-
-export type SuiSignerOptions = {
-  /** Hex-encoded 32-byte ed25519 seed (optional `0x` prefix). */
-  readonly seed: string;
-};
-
-export type StellarSignerOptions = {
-  /** Stellar StrKey-encoded ed25519 secret seed (starts with `S...`). */
-  readonly secret: string;
-};
-
-export type EvmSignerOptions = {
-  /** 0x-prefixed 32-byte hex private key. */
-  readonly privateKey: string;
-};
-
-export type BitcoinSignerOptions = {
-  /** WIF-encoded Bitcoin private key (mainnet starts with `K`/`L`/`5`, testnet with `c`/`9`). */
-  readonly wif: string;
-  /** Network used for address derivation. Defaults to `'mainnet'`. */
-  readonly network?: 'mainnet' | 'testnet';
-};
-
-export type StacksSignerOptions = {
-  /** Stacks secp256k1 private key as hex (32 bytes; optional `01` compressed-flag suffix). */
-  readonly privateKey: string;
-  /** Network used for address derivation. Defaults to `'mainnet'`. */
-  readonly network?: 'mainnet' | 'testnet';
-};
-
-export type AleoSourceSignerOptions = {
-  /** Optional existing source private key. If omitted, a new one is generated. */
-  readonly privateKey?: string;
-  /** Defaults to a `@provablehq/sdk`-backed factory for the given network. */
-  readonly factory?: AleoAccountFactory;
-  readonly network?: AleoNetwork;
-};
-
-export type DeriveAleoAccountOptions = {
-  readonly signer: CrossChainSigner;
+  readonly signerId: string;
+  readonly signatureBytes: Uint8Array;
+  /** Optional human-readable form echoed back in the response; defaults to hex of `signatureBytes`. */
+  readonly signatureDisplay?: string;
   readonly message: string;
-  readonly network?: AleoNetwork;
-  readonly domainSeparator?: string;
-  readonly hkdfInfoUtf8?: string;
 };
 
 export type DerivedAleoAccount = {
@@ -152,5 +112,3 @@ export type DerivedAleoAccount = {
   };
   readonly aleo: { readonly network: AleoNetwork } & AleoAccountKeys;
 };
-
-
