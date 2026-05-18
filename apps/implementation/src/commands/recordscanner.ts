@@ -2,8 +2,8 @@ import { RecordScannerService } from '@venture23-aleo/private-gmp-sdk';
 
 import { parseArgs, printJson, requireEnv } from '../utils.js';
 
-//pnpm scan --mode hosted --program credits.aleo
-//--mode hosted | sdk
+// pnpm scan --mode hosted --program credits.aleo
+// --mode hosted | sdk
 export async function runScan(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
   const mode = ((args.flags['mode'] as string | undefined) ?? 'hosted') as 'hosted' | 'sdk';

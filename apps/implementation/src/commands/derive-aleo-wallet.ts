@@ -81,6 +81,7 @@ export async function runDerive(argv: string[]): Promise<void> {
     derivation: {
       domainSeparator: result.derivation.domainSeparator,
       hkdfInfoUtf8: result.derivation.hkdfInfoUtf8,
+      seeds: result.derivation.seed
     },
   });
 }

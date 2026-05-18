@@ -43,3 +43,14 @@ export class AleoSourceSigner implements CrossChainSigner {
     };
   }
 }
+
+//derive aleo wallet flow
+//1. if new user came derivealeowallet gives wallet details with signature
+//2. added signature with signature type in pcc_vault record
+
+//if user is already exxist
+//1. BHP256 hash address
+//2. check mapping if user already exist
+//3. scan the record owned by user
+//4. retrive the signature from record
+//5. derive wallet from existing signature
