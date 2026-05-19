@@ -4,6 +4,8 @@ import {
 } from '@venture23-aleo/private-gmp-sdk';
 import type {
   AleoNetwork,
+  AleoVaultLookupOptions,
+  DerivedAleoAccount,
   SignedMessage,
   SourceChain,
 } from '@venture23-aleo/private-gmp-sdk';
@@ -67,11 +69,20 @@ async function sign(
     return StacksSigner.fromPrivateKey(pk, stacksNetwork).sign(message);
   }
 
-  const sourcePk = process.env.ALEO_SOURCE_PRIVATE_KEY;
-  const aleoSigner = sourcePk
-    ? AleoSigner.fromPrivateKey(sourcePk, network)
-    : AleoSigner.random(network);
-  return aleoSigner.sign(message);
+  // Default: aleo. Aleo source is handled directly in runDerive() via the
+  // SDK's deriveFromAleoSource (which knows about the vault cache).
+  return AleoSigner.random(network).sign(message);
+}
+
+function readVaultOptions(): AleoVaultLookupOptions | undefined {
+  const apiHost = process.env.ALEO_API_HOST;
+  if (!apiHost) return undefined;
+  return {
+    apiHost,
+    ...(process.env.ALEO_SCANNER_URL !== undefined && { scannerUrl: process.env.ALEO_SCANNER_URL }),
+    ...(process.env.SCANNER_API_KEY !== undefined && { apiKey: process.env.SCANNER_API_KEY }),
+    ...(process.env.SCANNER_CONSUMER_ID !== undefined && { consumerId: process.env.SCANNER_CONSUMER_ID }),
+  };
 }
 
 export async function runDerive(argv: string[]): Promise<void> {
@@ -82,15 +93,23 @@ export async function runDerive(argv: string[]): Promise<void> {
     (process.env.ALEO_NETWORK ?? 'testnet').toLowerCase() === 'mainnet' ? 'mainnet' : 'testnet';
   const message = args.positional.join(' ').trim() || DEFAULT_MESSAGE;
 
-  const signed = await sign(chain, message, network);
   const deriver = new AleoAccountDeriver({ network });
-  const result = await deriver.derive({
-    chain,
-    signerId: signed.signerId,
-    signatureBytes: signed.signatureBytes,
-    signatureDisplay: signed.signatureDisplay,
-    message,
-  });
+
+  let result: DerivedAleoAccount;
+  const aleoSourcePk = chain === 'aleo' ? process.env.ALEO_SOURCE_PRIVATE_KEY : undefined;
+  if (chain === 'aleo' && aleoSourcePk) {
+    // SDK handles the full flow: vault lookup → cached signature OR local sign → derive.
+    result = await deriver.deriveFromAleoSource(aleoSourcePk, message, readVaultOptions());
+  } else {
+    const signed = await sign(chain, message, network);
+    result = await deriver.derive({
+      chain,
+      signerId: signed.signerId,
+      signatureBytes: signed.signatureBytes,
+      signatureDisplay: signed.signatureDisplay,
+      message,
+    });
+  }
 
   printJson({
     source: result.source,

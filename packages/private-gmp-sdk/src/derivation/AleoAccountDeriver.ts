@@ -1,9 +1,11 @@
 import { DEFAULT_HKDF_INFO_UTF8, resolveDomainSeparator } from '../constants/derivation';
-import { ValidationError } from '../utils/errors';
+import { ValidationError, WalletError } from '../utils/errors';
 
 import { createProvableHqAccountFactory } from './account';
+import { tryFetchCachedAleoSignature } from './aleo-vault';
 import { assertSourceChain, deriveAleoSeed, domainSalt } from './seed';
 
+import type { AleoVaultLookupOptions } from './aleo-vault';
 import type {
   AleoAccountDeriverOptions,
   AleoAccountFactory,
@@ -11,6 +13,20 @@ import type {
   DeriveAleoAccountInput,
   DerivedAleoAccount,
 } from '../types/derivation';
+
+type ProvableHqModule = typeof import('@provablehq/sdk/testnet.js');
+
+async function loadProvableHq(network: AleoNetwork): Promise<ProvableHqModule> {
+  const sub = network === 'mainnet' ? 'mainnet.js' : 'testnet.js';
+  try {
+    return (await import(`@provablehq/sdk/${sub}`)) as ProvableHqModule;
+  } catch (err) {
+    throw new WalletError(
+      `AleoAccountDeriver.deriveFromAleoSource requires '@provablehq/sdk' (subpath '${sub}').`,
+      err,
+    );
+  }
+}
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -79,5 +95,56 @@ export class AleoAccountDeriver {
       },
       aleo: { network: this.network, ...keys },
     };
+  }
+
+  /**
+   * Derive an Aleo wallet using an Aleo source private key.
+   *
+   * When `vaultOptions` is supplied, checks `veru_pcc_vault.aleo`'s
+   * `is_available[BHP256(sourceAddress)]` mapping first. If the entry exists,
+   * scans the user's `userInfo` records and decrypts to recover the cached
+   * signature — yielding a deterministic derivation. Otherwise (or if vault
+   * options aren't provided), signs locally with the Aleo SDK (note: Aleo's
+   * Schnorr signing uses a fresh random nonce, so local signing produces a
+   * different derived account on every call).
+   *
+   * This method does NOT call `set_user_info` — caching is the caller's job.
+   */
+  async deriveFromAleoSource(
+    aleoPrivateKey: string,
+    message: string,
+    vaultOptions?: AleoVaultLookupOptions,
+  ): Promise<DerivedAleoAccount> {
+    if (typeof aleoPrivateKey !== 'string' || aleoPrivateKey.length === 0) {
+      throw new ValidationError('deriveFromAleoSource: aleoPrivateKey must be non-empty.');
+    }
+    if (typeof message !== 'string' || message.length === 0) {
+      throw new ValidationError('deriveFromAleoSource: message must be non-empty.');
+    }
+
+    if (vaultOptions) {
+      const cached = await tryFetchCachedAleoSignature(aleoPrivateKey, this.network, vaultOptions);
+      if (cached) {
+        return this.derive({
+          chain: 'aleo',
+          signerId: cached.address,
+          signatureBytes: new TextEncoder().encode(cached.signature),
+          signatureDisplay: cached.signature,
+          message,
+        });
+      }
+    }
+
+    const { Account } = await loadProvableHq(this.network);
+    const account = new Account({ privateKey: aleoPrivateKey });
+    const signature = account.sign(new TextEncoder().encode(message)).to_string();
+
+    return this.derive({
+      chain: 'aleo',
+      signerId: account.address().to_string(),
+      signatureBytes: new TextEncoder().encode(signature),
+      signatureDisplay: signature,
+      message,
+    });
   }
 }
