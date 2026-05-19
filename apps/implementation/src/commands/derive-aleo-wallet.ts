@@ -1,8 +1,3 @@
-import { Buffer } from 'node:buffer';
-import { randomBytes } from 'node:crypto';
-
-import { Keypair } from '@solana/web3.js';
-import { Wallet } from 'ethers';
 import {
   AleoAccountDeriver,
   assertSourceChain,
@@ -12,17 +7,15 @@ import type {
   SignedMessage,
   SourceChain,
 } from '@venture23-aleo/private-gmp-sdk';
-import bs58 from 'bs58';
 
 import {
-  generateStellarSecret,
-  signAleoMessage,
-  signBitcoinMessage,
-  signEvmMessage,
-  signSolanaMessage,
-  signStellarMessage,
-  signSuiMessage,
+  AleoSigner,
+  BitcoinSigner,
+  EvmSigner,
+  SolanaSigner,
   StacksSigner,
+  StellarSigner,
+  SuiSigner,
 } from '../signers/index.js';
 import { parseArgs, printJson } from '../utils.js';
 
@@ -35,31 +28,33 @@ async function sign(
   network: AleoNetwork,
 ): Promise<SignedMessage> {
   if (chain === 'evm') {
-    const privateKey = process.env.EVM_PRIVATE_KEY ?? Wallet.createRandom().privateKey;
-    return signEvmMessage(privateKey, message);
+    const privateKey = process.env.EVM_PRIVATE_KEY;
+    if (!privateKey) throw new Error('Set EVM_PRIVATE_KEY for chain=evm');
+    return EvmSigner.fromPrivateKey(privateKey).sign(message);
   }
 
   if (chain === 'solana') {
-    const secretKeyB58 =
-      process.env.SOLANA_PRIVATE_KEY_B58 ?? bs58.encode(Keypair.generate().secretKey);
-    return signSolanaMessage(secretKeyB58, message);
+    const secretKeyB58 = process.env.SOLANA_PRIVATE_KEY;
+    if (!secretKeyB58) throw new Error('Set SOLANA_PRIVATE_KEY for chain=solana');
+    return SolanaSigner.fromBase58SecretKey(secretKeyB58).sign(message);
   }
 
   if (chain === 'sui') {
-    const seedHex =
-      process.env.SUI_PRIVATE_KEY_HEX ?? Buffer.from(randomBytes(32)).toString('hex');
-    return signSuiMessage(seedHex, message);
+    const seedHex = process.env.SUI_PRIVATE_KEY;
+    if (!seedHex) throw new Error('Set SUI_PRIVATE_KEY for chain=sui');
+    return SuiSigner.fromHexSeed(seedHex).sign(message);
   }
 
   if (chain === 'bitcoin') {
     const wif = process.env.BITCOIN_WIF;
     if (!wif) throw new Error('Set BITCOIN_WIF for chain=bitcoin');
-    return signBitcoinMessage(wif, message);
+    return BitcoinSigner.fromWif(wif).sign(message);
   }
 
   if (chain === 'stellar') {
-    const secret = process.env.STELLAR_SECRET_KEY ?? generateStellarSecret();
-    return signStellarMessage(secret, message);
+    const secret = process.env.STELLAR_SECRET_KEY;
+    if (!secret) throw new Error('Set STELLAR_SECRET_KEY for chain=stellar');
+    return StellarSigner.fromSecret(secret).sign(message);
   }
 
   if (chain === 'stacks') {
@@ -73,10 +68,10 @@ async function sign(
   }
 
   const sourcePk = process.env.ALEO_SOURCE_PRIVATE_KEY;
-  return signAleoMessage(message, {
-    network,
-    ...(sourcePk !== undefined && { privateKey: sourcePk }),
-  });
+  const aleoSigner = sourcePk
+    ? AleoSigner.fromPrivateKey(sourcePk, network)
+    : AleoSigner.random(network);
+  return aleoSigner.sign(message);
 }
 
 export async function runDerive(argv: string[]): Promise<void> {

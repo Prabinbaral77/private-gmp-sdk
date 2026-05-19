@@ -13,7 +13,7 @@
     "build": "pnpm -r --filter=./packages/* run build",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm -r run test",
+    "test": "pnpm -r --reporter=append-only run test",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json,yaml,yml}\"",
     "implementation": "pnpm --filter @venture23-aleo/implementation run start",

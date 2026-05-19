@@ -56,8 +56,8 @@ you. Set the per-chain key only if you want a deterministic Aleo account.
 | -------- | --------------------------------------------- |
 | `aleo`   | `ALEO_SOURCE_PRIVATE_KEY`                     |
 | `evm`    | `EVM_PRIVATE_KEY`                             |
-| `solana` | `SOLANA_PRIVATE_KEY_B58`                      |
-| `sui`    | `SUI_PRIVATE_KEY_HEX`                         |
+| `solana` | `SOLANA_PRIVATE_KEY`                          |
+| `sui`    | `SUI_PRIVATE_KEY`                             |
 | `bitcoin`| `BITCOIN_WIF`                                 |
 | `stellar`| `STELLAR_SECRET_KEY`                          |
 | `stacks` | `STACKS_PRIVATE_KEY`                          |
