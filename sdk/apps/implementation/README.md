@@ -6,8 +6,6 @@ A small Node.js CLI that exercises every public flow exposed by
 - **Derive** an Aleo account from a foreign-chain signer
   (`aleo` / `evm` / `solana` / `sui` / `bitcoin` / `stellar` / `stacks`).
 - **Scan** owned records via the hosted indexer or the local SDK.
-- **Fee-sponsor** a program call — either fully on-chain or delegated to a
-  remote prover.
 
 Use this app to smoke-test changes to the SDK without writing throw-away
 scripts.
@@ -74,21 +72,6 @@ SCANNER_CONSUMER_ID=
 ALEO_SCANNER_URL=
 ```
 
-### To fee-sponsor a transaction
-
-```env
-ALEO_NETWORK=testnet
-ALEO_API_HOST=https://api.provable.com/v2
-
-USER_ALEO_PRIVATE_KEY=APrivateKey1zkp...     # caller
-SPONSOR_ALEO_PRIVATE_KEY=APrivateKey1zkp...  # pays the fee
-
-# Optional — only for `sponsor:delegated`:
-PROVER_URL=
-PROVER_API_KEY=
-PROVER_CONSUMER_ID=
-```
-
 > Never commit `.env`. The repo's `.gitignore` already excludes it.
 
 ---
@@ -113,30 +96,6 @@ pnpm scan --mode hosted --programs credits.aleo
 # --limit 25  (optional)
 ```
 
-### Fee-sponsored transaction — sponsor submits on-chain
-
-```bash
-pnpm sponsor:onchain \
-  --program credits.aleo \
-  --function transfer_public \
-  --input aleo1... \
-  --input 1000u64
-```
-
-### Fee-sponsored transaction — delegated to a remote prover
-
-```bash
-pnpm sponsor:delegated \
-  --program credits.aleo \
-  --function transfer_public \
-  --input aleo1... \
-  --input 1000u64
-# extra flags:
-#   --splitFeeAuthorization false   (use SDK's useFeeMaster path instead)
-#   --broadcast false               (build only, don't broadcast)
-#   --privateFee true               (pay the fee from a private record)
-```
-
 ### Full help
 
 ```bash
@@ -154,8 +113,7 @@ apps/implementation/
 │   ├── utils.ts                      # arg parsing + dotenv loader
 │   └── commands/
 │       ├── derive-aleo-wallet.ts     # `derive`
-│       ├── recordscanner.ts          # `scan`
-│       └── fee-sponsor.ts            # `sponsor onchain | delegated`
+│       └── recordscanner.ts          # `scan`
 ├── package.json
 ├── tsconfig.json
 └── README.md            ← you are here

@@ -18,9 +18,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json,yaml,yml}\"",
     "implementation": "pnpm --filter @venture23-aleo/implementation run start",
     "derive": "pnpm --filter @venture23-aleo/implementation run start derive",
-    "scan": "pnpm --filter @venture23-aleo/implementation run start scan",
-    "sponsor:onchain": "pnpm --filter @venture23-aleo/implementation run start sponsor onchain",
-    "sponsor:delegated": "pnpm --filter @venture23-aleo/implementation run start sponsor delegated"
+    "scan": "pnpm --filter @venture23-aleo/implementation run start scan"
   },
   "devDependencies": {
     "prettier": "^3.2.5"

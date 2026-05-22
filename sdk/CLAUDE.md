@@ -22,8 +22,6 @@ pnpm format                               # prettier --write across the tree
 
 pnpm derive --chain evm "msg"             # CLI: derive Aleo account from foreign signer
 pnpm scan --mode hosted --programs credits.aleo
-pnpm sponsor:onchain   --program <p> --function <f> --input <v> [--input <v>]
-pnpm sponsor:delegated --program <p> --function <f> --input <v> [--input <v>]
 pnpm implementation --help                # full CLI help
 ```
 
@@ -33,7 +31,7 @@ The implementation CLI loads env from `apps/implementation/.env` first, then `$C
 
 The implementation's `tsconfig.json` path-maps `@venture23-aleo/private-gmp-sdk` → `packages/private-gmp-sdk/src/index.ts`, so **typecheck** uses the live source. But `tsx` at **runtime** follows pnpm's symlink to the package, which resolves via `package.json#main`/`module` to `dist/index.cjs` / `dist/index.js`.
 
-**Result:** edits to `packages/private-gmp-sdk/src/**` won't be exercised by `pnpm sponsor:*` / `pnpm scan` / `pnpm derive` until you rebuild:
+**Result:** edits to `packages/private-gmp-sdk/src/**` won't be exercised by `pnpm scan` / `pnpm derive` until you rebuild:
 
 ```bash
 pnpm --filter @venture23-aleo/private-gmp-sdk run build
@@ -45,7 +43,6 @@ The package README claims "edits to the SDK source are reflected immediately, no
 
 `packages/private-gmp-sdk/src/index.ts` is a barrel re-exporting every module. The public surface area is grouped by capability:
 
-- `fee-sponsorship/FeeSponsorshipService.ts` — `submitOnchain` (sponsor signs + submits locally) and `submitDelegated` (build authorization locally, send to remote prover). The delegated path has two sub-modes via `splitFeeAuthorization`: true = build fee auth locally and ship as ProvingRequest, false = let the prover's FeeMaster pay.
 - `scanner/scanner.ts` — `RecordScannerService` with `hosted()` (Provable indexer) and `sdk()` (direct via `NetworkRecordProvider`) modes. Hosted mode auto-registers a consumer if `apiKey`/`consumerId` are missing.
 - `derivation/` — `deriveAleoAccount({ signer, message, network })` plus per-chain signers under `derivation/signers/` (`aleo`, `evm`, `solana`, `sui`, `bitcoin`, `stellar`, `stacks`). Backed by `createProvableHqAccountFactory`.
 - `encoding/`, `program/`, `transaction/`, `client/`, `wallet/`, `types/`, `utils/`, `config/`, `constants/` — supporting layers. `types/` is re-exported under its own subpath (`@venture23-aleo/private-gmp-sdk/types`) as is `encoding/` and `derivation/` (see `tsup.config.ts#entry`).
@@ -65,26 +62,6 @@ Other chain SDKs (`ethers`, `@solana/web3.js`, `bitcoinjs-lib`, `@stacks/transac
 ### Path alias
 
 SDK source uses `@/*` → `src/*` (see `packages/private-gmp-sdk/tsconfig.json#paths`). The implementation app's tsconfig also defines `@/*` → `packages/private-gmp-sdk/src/*` so it can reach internal SDK paths during typecheck — don't use that alias in app code outside of debugging.
-
-## Known SDK 0.10.5 limitation: edition-bound execution
-
-`@provablehq/sdk` 0.10.5's WASM `executeAuthorization` does not accept an `edition` parameter and registers programs at edition 0 via `process.add_program(...)`. `buildAuthorization` *does* accept and encode `edition`, so `submitOnchain` can build an authorization for any edition, but the subsequent `buildTransactionFromAuthorization` will fail with:
-
-```
-Cannot execute <program>.aleo on edition <n>
-```
-
-…whenever the on-chain `latest_edition` is ≥ 1. This is fixed on the SDK `mainnet` branch but not yet released. Workarounds:
-
-1. Test against programs whose `latest_edition` is 0 (e.g. names you deployed yourself and have not redeployed).
-2. Use `sponsor:delegated` — the remote prover runs its own SDK and may already have the fix.
-3. Wait for the next `@provablehq/sdk` release.
-
-Check `latest_edition` for any testnet program with:
-
-```bash
-curl -s https://api.provable.com/v2/testnet/program/<name>.aleo/latest_edition
-```
 
 ## TypeScript strictness
 

@@ -9,8 +9,6 @@
     "start": "tsx --tsconfig tsconfig.json src/index.ts",
     "derive": "tsx --tsconfig tsconfig.json src/index.ts derive",
     "scan": "tsx --tsconfig tsconfig.json src/index.ts scan",
-    "sponsor:onchain": "tsx --tsconfig tsconfig.json src/index.ts sponsor onchain",
-    "sponsor:delegated": "tsx --tsconfig tsconfig.json src/index.ts sponsor delegated",
     "test": "tsx --test --test-reporter=spec tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },

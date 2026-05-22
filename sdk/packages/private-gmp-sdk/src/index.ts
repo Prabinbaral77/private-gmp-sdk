@@ -3,7 +3,6 @@ export * from './config';
 export * from './constants';
 export * from './derivation';
 export * from './encoding';
-export * from './fee-sponsorship';
 export * from './program';
 export * from './scanner';
 export * from './transaction';
