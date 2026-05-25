@@ -1,11 +1,9 @@
 import type {
   AppConfig,
-  CheckedTransition,
+  FeeAuthorizationRequest,
+  FeeAuthorizationResponse,
   Party,
   ProvableSdkModule,
-  SdkAuthorization,
-  SponsorRequest,
-  SponsorResponse,
 } from './types.js';
 
 export class ValidationError extends Error {
@@ -22,6 +20,13 @@ export class PolicyError extends Error {
   }
 }
 
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
 export class FeeSponsor {
   private readonly config: AppConfig;
   private partyPromise: Promise<Party> | undefined;
@@ -30,101 +35,62 @@ export class FeeSponsor {
     this.config = config;
   }
 
-  async sponsor(req: SponsorRequest): Promise<SponsorResponse> {
+  authenticate(apiKey: string | undefined): void {
+    if (this.config.apiKeys.size === 0) {
+      throw new AuthError('Server has no API keys configured; all requests are rejected');
+    }
+    if (!apiKey) {
+      throw new AuthError('Missing API key (expected Authorization: Bearer <key> or x-api-key)');
+    }
+    if (!this.config.apiKeys.has(apiKey)) {
+      throw new AuthError('Invalid API key');
+    }
+  }
+
+  async signFee(req: FeeAuthorizationRequest): Promise<FeeAuthorizationResponse> {
     this.validateRequest(req);
 
-    const { sdk, account, pm, address } = await this.getParty();
-
-    let authorization: SdkAuthorization;
-    try {
-      authorization = sdk.Authorization.fromString(req.authorization);
-    } catch (err) {
-      throw new ValidationError(
-        `Failed to parse authorization: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-
-   
-    const transitions = authorization.transitions().map<CheckedTransition>((t) => ({
-      programId: t.programId(),
-      functionName: t.functionName(),
-    }));
-    if (transitions.length === 0) {
-      throw new ValidationError('Authorization has no transitions');
-    }
-
-    const entryFunctionName = authorization.functionName();
-    const entryPoint =
-      [...transitions].reverse().find((t) => t.functionName === entryFunctionName) ??
-      transitions[transitions.length - 1];
-
-    if (!this.isAllowed(entryPoint.programId, entryPoint.functionName)) {
-      throw new PolicyError(
-        `Not allowed: ${entryPoint.programId}/${entryPoint.functionName}`,
-      );
-    }
-
-    const executionId = authorization.toExecutionId().toString();
-
-    const baseFeeMicrocredits = await pm.estimateFeeForAuthorization({
-      programName: entryPoint.programId,
-      authorization,
-    });
-    const baseFeeCredits = Number(baseFeeMicrocredits) / 1_000_000;
+    const baseFeeCredits = req.baseFeeCredits;
     if (baseFeeCredits > this.config.maxBaseFeeCredits) {
       throw new PolicyError(
-        `Estimated base fee ${baseFeeCredits} exceeds cap ${this.config.maxBaseFeeCredits}`,
+        `baseFeeCredits ${baseFeeCredits} exceeds cap ${this.config.maxBaseFeeCredits}`,
       );
     }
-
     const priorityFeeCredits = req.priorityFeeCredits ?? this.config.defaultPriorityFeeCredits;
     if (priorityFeeCredits > this.config.maxPriorityFeeCredits) {
       throw new PolicyError(
-        `Priority fee ${priorityFeeCredits} exceeds cap ${this.config.maxPriorityFeeCredits}`,
+        `priorityFeeCredits ${priorityFeeCredits} exceeds cap ${this.config.maxPriorityFeeCredits}`,
       );
     }
 
+    const { account, pm, address } = await this.getParty();
+
     const feeAuthorization = await pm.buildFeeAuthorization({
-      deploymentOrExecutionId: executionId,
+      deploymentOrExecutionId: req.executionId,
       baseFeeCredits,
       priorityFeeCredits,
       privateKey: account.privateKey(),
     });
 
-    const broadcast = req.broadcast ?? true;
-    const provingRequest = sdk.ProvingRequest.new(authorization, feeAuthorization, broadcast);
-
-    const submitArgs: {
-      provingRequest: typeof provingRequest;
-      url?: string;
-      apiKey?: string;
-      consumerId?: string;
-      dpsPrivacy?: boolean;
-    } = { provingRequest };
-    if (this.config.proverUrl !== undefined) submitArgs.url = this.config.proverUrl;
-    if (this.config.proverApiKey !== undefined) submitArgs.apiKey = this.config.proverApiKey;
-    if (this.config.proverConsumerId !== undefined) {
-      submitArgs.consumerId = this.config.proverConsumerId;
-    }
-    submitArgs.dpsPrivacy = this.config.proverDpsPrivacy;
-
-    const proving = await pm.networkClient.submitProvingRequest(submitArgs);
-
     return {
       sponsorAddress: address,
-      executionId,
-      entryPoint,
-      transitions,
-      estimatedBaseFeeCredits: baseFeeCredits,
+      executionId: req.executionId,
+      baseFeeCredits,
       priorityFeeCredits,
-      broadcastRequested: broadcast,
-      proving,
+      feeAuthorization: feeAuthorization.toString(),
     };
   }
 
-  private validateRequest(req: SponsorRequest): void {
-    if (typeof req.authorization !== 'string' || req.authorization.length === 0) {
-      throw new ValidationError('authorization must be a non-empty string');
+  private validateRequest(req: FeeAuthorizationRequest): void {
+    if (typeof req.executionId !== 'string' || req.executionId.length === 0) {
+      throw new ValidationError('executionId must be a non-empty string');
+    }
+    if (
+      typeof req.baseFeeCredits !== 'number' ||
+      !Number.isFinite(req.baseFeeCredits) ||
+      req.baseFeeCredits < 0
+    ) {
+      throw new ValidationError('baseFeeCredits must be a non-negative number');
     }
     if (req.priorityFeeCredits !== undefined) {
       const pf = req.priorityFeeCredits;
@@ -132,14 +98,6 @@ export class FeeSponsor {
         throw new ValidationError('priorityFeeCredits must be a non-negative number');
       }
     }
-    if (req.broadcast !== undefined && typeof req.broadcast !== 'boolean') {
-      throw new ValidationError('broadcast must be a boolean');
-    }
-  }
-
-  private isAllowed(programId: string, functionName: string): boolean {
-    const allowed = this.config.allowlist[programId];
-    return allowed?.has(functionName) ?? false;
   }
 
   private getParty(): Promise<Party> {

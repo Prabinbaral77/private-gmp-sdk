@@ -1,39 +1,34 @@
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 
-import { FeeSponsor, PolicyError, ValidationError } from './sponsor.js';
-import type { AppConfig, SponsorRequest } from './types.js';
+import { AuthError, FeeSponsor, PolicyError, ValidationError } from './sponsor.js';
+import type { AppConfig, FeeAuthorizationRequest } from './types.js';
 
 export function createApp(config: AppConfig): Express {
   const sponsor = new FeeSponsor(config);
   const app = express();
 
-  // The delegated prover's response carries BigInt fields (e.g. broadcast
-  // status_code); JSON.stringify throws on those, so stringify them here.
-  app.set('json replacer', (_key: string, value: unknown) =>
-    typeof value === 'bigint' ? value.toString() : value,
-  );
-
-  app.use(express.json({ limit: '256kb' }));
+  app.use(express.json({ limit: '32kb' }));
 
   app.get('/health', (_req, res) => {
     res.json({
       ok: true,
       network: config.network,
-      allowedPrograms: Object.fromEntries(
-        Object.entries(config.allowlist).map(([k, v]) => [k, [...v]]),
-      ),
+      authConfigured: config.apiKeys.size > 0,
+      maxBaseFeeCredits: config.maxBaseFeeCredits,
+      maxPriorityFeeCredits: config.maxPriorityFeeCredits,
     });
   });
 
-  app.post('/sponsor', async (req: Request, res: Response, next: NextFunction) => {
+  app.post('/fee-authorization', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const body = (req.body ?? {}) as Partial<SponsorRequest>;
-      const result = await sponsor.sponsor({
-        authorization: body.authorization as string,
+      sponsor.authenticate(extractApiKey(req));
+      const body = (req.body ?? {}) as Partial<FeeAuthorizationRequest>;
+      const result = await sponsor.signFee({
+        executionId: body.executionId as string,
+        baseFeeCredits: body.baseFeeCredits as number,
         ...(body.priorityFeeCredits !== undefined
           ? { priorityFeeCredits: body.priorityFeeCredits }
           : {}),
-        ...(body.broadcast !== undefined ? { broadcast: body.broadcast } : {}),
       });
       res.json(result);
     } catch (err) {
@@ -42,6 +37,10 @@ export function createApp(config: AppConfig): Express {
   });
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (err instanceof AuthError) {
+      res.status(401).json({ error: err.message });
+      return;
+    }
     if (err instanceof ValidationError) {
       res.status(400).json({ error: err.message });
       return;
@@ -55,4 +54,14 @@ export function createApp(config: AppConfig): Express {
   });
 
   return app;
+}
+
+function extractApiKey(req: Request): string | undefined {
+  const header = req.header('authorization');
+  if (header) {
+    const match = /^Bearer\s+(.+)$/i.exec(header);
+    if (match && match[1]) return match[1].trim();
+  }
+  const xKey = req.header('x-api-key');
+  return xKey && xKey.length > 0 ? xKey : undefined;
 }

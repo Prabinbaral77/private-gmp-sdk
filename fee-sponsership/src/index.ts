@@ -7,11 +7,12 @@ function main(): void {
   app.listen(config.port, () => {
     console.log(`fee-sponsorship server listening on http://localhost:${config.port}`);
     console.log(`  network=${config.network}  host=${config.host}`);
-    const programs = Object.keys(config.allowlist);
-    if (programs.length === 0) {
-      console.warn('  WARNING: allowlist is empty — every /sponsor request will be rejected.');
+    if (config.apiKeys.size === 0) {
+      console.warn(
+        '  WARNING: no API_KEYS configured — every /fee-authorization request will be rejected with 401.',
+      );
     } else {
-      console.log(`  allowlist: ${programs.join(', ')}`);
+      console.log(`  api keys: ${config.apiKeys.size} loaded`);
     }
   });
 }

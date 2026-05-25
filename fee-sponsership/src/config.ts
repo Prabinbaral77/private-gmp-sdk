@@ -1,15 +1,6 @@
 import 'dotenv/config';
 
-import type { Allowlist, AppConfig, Network } from './types.js';
-
-// Edit this map to control which (program, function) pairs the sponsor will pay for.
-// Key   = program ID (e.g. "credits.aleo")
-// Value = list of allowed function names within that program.
-// An empty map disables sponsorship entirely (every request is rejected).
-const ALLOWED_PROGRAMS: Record<string, readonly string[]> = {
-  // 'credits.aleo': ['transfer_public'],
-  'sample_program.aleo': ['main'],
-};
+import type { AppConfig, Network } from './types.js';
 
 const DEFAULTS = {
   port: 3000,
@@ -18,24 +9,12 @@ const DEFAULTS = {
   defaultPriorityFeeCredits: 0,
   maxBaseFeeCredits: 10,
   maxPriorityFeeCredits: 1,
-  proverDpsPrivacy: true,
 } as const;
 
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env var ${name}`);
   return value;
-}
-
-function optionalEnv(name: string): string | undefined {
-  const value = process.env[name];
-  return value && value.length > 0 ? value : undefined;
-}
-
-function asBool(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined) return fallback;
-  const v = value.toLowerCase();
-  return v === '1' || v === 'true' || v === 'yes';
 }
 
 function asNumber(value: string | undefined, fallback: number, name: string): number {
@@ -47,12 +26,13 @@ function asNumber(value: string | undefined, fallback: number, name: string): nu
   return n;
 }
 
-function buildAllowlist(): Allowlist {
-  const out: Record<string, ReadonlySet<string>> = {};
-  for (const [program, fns] of Object.entries(ALLOWED_PROGRAMS)) {
-    out[program] = new Set(fns);
-  }
-  return Object.freeze(out);
+function loadApiKeys(): ReadonlySet<string> {
+  const raw = process.env['API_KEYS'] ?? '';
+  const keys = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  return new Set(keys);
 }
 
 export function loadConfig(): AppConfig {
@@ -64,11 +44,6 @@ export function loadConfig(): AppConfig {
     network,
     host: process.env['ALEO_API_HOST'] ?? DEFAULTS.host,
     sponsorPrivateKey: requireEnv('SPONSOR_ALEO_PRIVATE_KEY'),
-
-    proverUrl: optionalEnv('PROVER_URL'),
-    proverApiKey: optionalEnv('PROVER_API_KEY'),
-    proverConsumerId: optionalEnv('PROVER_CONSUMER_ID'),
-    proverDpsPrivacy: asBool(process.env['PROVER_DPS_PRIVACY'], DEFAULTS.proverDpsPrivacy),
 
     defaultPriorityFeeCredits: asNumber(
       process.env['DEFAULT_PRIORITY_FEE_CREDITS'],
@@ -86,6 +61,6 @@ export function loadConfig(): AppConfig {
       'MAX_PRIORITY_FEE_CREDITS',
     ),
 
-    allowlist: buildAllowlist(),
+    apiKeys: loadApiKeys(),
   };
 }
