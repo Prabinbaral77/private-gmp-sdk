@@ -41,11 +41,13 @@ The package README claims "edits to the SDK source are reflected immediately, no
 
 ## SDK architecture
 
-`packages/private-gmp-sdk/src/index.ts` is a barrel re-exporting every module. The public surface area is grouped by capability:
+The SDK is intentionally narrow — only two runtime capabilities ship:
 
 - `scanner/scanner.ts` — `RecordScannerService` with `hosted()` (Provable indexer) and `sdk()` (direct via `NetworkRecordProvider`) modes. Hosted mode auto-registers a consumer if `apiKey`/`consumerId` are missing.
-- `derivation/` — `deriveAleoAccount({ signer, message, network })` plus per-chain signers under `derivation/signers/` (`aleo`, `evm`, `solana`, `sui`, `bitcoin`, `stellar`, `stacks`). Backed by `createProvableHqAccountFactory`.
-- `encoding/`, `program/`, `transaction/`, `client/`, `wallet/`, `types/`, `utils/`, `config/`, `constants/` — supporting layers. `types/` is re-exported under its own subpath (`@venture23-aleo/private-gmp-sdk/types`) as is `encoding/` and `derivation/` (see `tsup.config.ts#entry`).
+- `derivation/` — `AleoAccountDeriver` for deriving deterministic Aleo accounts from a foreign-chain signature. Per-chain signing helpers live in the implementation app (`apps/implementation/src/signers/`), not in the SDK — the SDK consumes the raw `SignedMessage` shape.
+- `types/`, `utils/`, `constants/` — supporting layers. `types/`, `derivation/`, and `scanner/` are each re-exported under their own subpaths (e.g. `@venture23-aleo/private-gmp-sdk/types`); see `tsup.config.ts#entry`.
+
+Fee sponsorship lives in a separate server under `fee-sponsership/` at the repo root, not in the SDK.
 
 ### `@provablehq/sdk` is loaded dynamically per-network
 
@@ -57,7 +59,7 @@ await import(`@provablehq/sdk/${network === 'mainnet' ? 'mainnet.js' : 'testnet.
 
 inside a `loadSdk()` / `loadProvableHq()` helper, then cache the module promise. This is why `@provablehq/sdk` is declared as a **peer dep** in `packages/private-gmp-sdk/package.json` (with `peerDependenciesMeta.optional: true`) and a `WalletError` is thrown if the import fails. When adding a new flow that touches SnarkVM/WASM, follow the same lazy-load pattern — don't add a top-level import.
 
-Other chain SDKs (`ethers`, `@solana/web3.js`, `bitcoinjs-lib`, `@stacks/transactions`, `@stellar/stellar-sdk`, `bs58`, `tweetnacl`, `@bitcoinerlab/secp256k1`, `ecpair`) are also peer deps with the same opt-in pattern — only consumers that exercise that derivation chain need to install them.
+The SDK itself no longer depends on any chain SDKs — chain-specific signing lives in `apps/implementation/src/signers/` and feeds the SDK only the raw `SignedMessage`.
 
 ### Path alias
 
@@ -69,4 +71,4 @@ SDK source uses `@/*` → `src/*` (see `packages/private-gmp-sdk/tsconfig.json#p
 
 ## Build outputs
 
-`tsup` emits four entrypoints (see `tsup.config.ts#entry`): `index`, `encoding/index`, `types/index`, `derivation/index`. If you add a new public subpath, register it both in `tsup.config.ts#entry` and in `package.json#exports`.
+`tsup` emits four entrypoints (see `tsup.config.ts#entry`): `index`, `types/index`, `derivation/index`, `scanner/index`. If you add a new public subpath, register it both in `tsup.config.ts#entry` and in `package.json#exports`.

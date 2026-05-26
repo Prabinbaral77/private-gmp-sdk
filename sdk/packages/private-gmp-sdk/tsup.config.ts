@@ -3,9 +3,9 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
-    'encoding/index': 'src/encoding/index.ts',
     'types/index': 'src/types/index.ts',
     'derivation/index': 'src/derivation/index.ts',
+    'scanner/index': 'src/scanner/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,
@@ -16,5 +16,5 @@ export default defineConfig({
   treeshake: true,
   target: 'node18',
   outDir: 'dist',
-  external: ['@sodax/wallet-sdk', '@provablehq/sdk'],
+  external: ['@provablehq/sdk'],
 });
