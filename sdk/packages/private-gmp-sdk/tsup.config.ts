@@ -6,6 +6,7 @@ export default defineConfig({
     'types/index': 'src/types/index.ts',
     'derivation/index': 'src/derivation/index.ts',
     'scanner/index': 'src/scanner/index.ts',
+    'fee-sponsor/index': 'src/fee-sponsor/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

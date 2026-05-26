@@ -9,6 +9,7 @@
     "start": "tsx --tsconfig tsconfig.json src/index.ts",
     "derive": "tsx --tsconfig tsconfig.json src/index.ts derive",
     "scan": "tsx --tsconfig tsconfig.json src/index.ts scan",
+    "sponsor": "tsx --tsconfig tsconfig.json src/index.ts sponsor",
     "test": "tsx --test --test-reporter=spec tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },

@@ -28,6 +28,11 @@
       "types": "./dist/scanner/index.d.ts",
       "import": "./dist/scanner/index.js",
       "require": "./dist/scanner/index.cjs"
+    },
+    "./fee-sponsor": {
+      "types": "./dist/fee-sponsor/index.d.ts",
+      "import": "./dist/fee-sponsor/index.js",
+      "require": "./dist/fee-sponsor/index.cjs"
     }
   },
   "files": [
