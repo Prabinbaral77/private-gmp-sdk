@@ -18,7 +18,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json,yaml,yml}\"",
     "implementation": "pnpm --filter @venture23-aleo/implementation run start",
     "derive": "pnpm --filter @venture23-aleo/implementation run start derive",
-    "scan": "pnpm --filter @venture23-aleo/implementation run start scan"
+    "scan": "pnpm --filter @venture23-aleo/implementation run start scan",
+    "execute": "pnpm --filter @venture23-aleo/implementation run start execute"
   },
   "devDependencies": {
     "prettier": "^3.2.5"

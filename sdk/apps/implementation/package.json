@@ -10,6 +10,7 @@
     "derive": "tsx --tsconfig tsconfig.json src/index.ts derive",
     "scan": "tsx --tsconfig tsconfig.json src/index.ts scan",
     "sponsor": "tsx --tsconfig tsconfig.json src/index.ts sponsor",
+    "execute": "tsx --tsconfig tsconfig.json src/index.ts execute",
     "test": "tsx --test --test-reporter=spec tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },

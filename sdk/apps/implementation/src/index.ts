@@ -1,4 +1,5 @@
 import { runDerive } from './commands/derive-aleo-wallet.js';
+import { runExecute } from './commands/execute.js';
 import { runScan } from './commands/recordscanner.js';
 import { runSponsor } from './commands/sponsor.js';
 import { loadDotenv } from './utils.js';
@@ -17,6 +18,13 @@ Commands:
       Build a program authorization locally, request a sponsored fee
       authorization via the SDK's FeeSponsorClient, and assemble a
       ProvingRequest. Submits to PROVER_URL if set.
+
+  execute [--r0 1] [--r1 2] [--priority 0] [--private-fee false] [--wait true] [--delegate [url]]
+      Call sample_program.aleo/main(r0: u32.public, r1: u32.private) via
+      AleoWalletProvider.callSampleMain. Program/function/signature are baked
+      into the SDK; r0 and r1 are validated as u32 before signing. The wallet
+      (USER_ALEO_PRIVATE_KEY) pays its own fee — no sponsor. Pass --delegate
+      to off-load proving to PROVER_URL (with PROVER_API_KEY / PROVER_CONSUMER_ID).
 
 Environment (read from apps/implementation/.env):
   ALEO_NETWORK, ALEO_API_HOST
@@ -47,6 +55,9 @@ async function main(): Promise<void> {
       return;
     case 'sponsor':
       await runSponsor([sub, ...rest].filter(Boolean) as string[]);
+      return;
+    case 'execute':
+      await runExecute([sub, ...rest].filter(Boolean) as string[]);
       return;
     default:
       console.error(`Unknown command: ${command}\n`);

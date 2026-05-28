@@ -7,6 +7,8 @@ export default defineConfig({
     'derivation/index': 'src/derivation/index.ts',
     'scanner/index': 'src/scanner/index.ts',
     'fee-sponsor/index': 'src/fee-sponsor/index.ts',
+    'wallet/index': 'src/wallet/index.ts',
+    'contracts/index': 'src/contracts/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

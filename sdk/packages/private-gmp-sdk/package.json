@@ -33,6 +33,16 @@
       "types": "./dist/fee-sponsor/index.d.ts",
       "import": "./dist/fee-sponsor/index.js",
       "require": "./dist/fee-sponsor/index.cjs"
+    },
+    "./wallet": {
+      "types": "./dist/wallet/index.d.ts",
+      "import": "./dist/wallet/index.js",
+      "require": "./dist/wallet/index.cjs"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "import": "./dist/contracts/index.js",
+      "require": "./dist/contracts/index.cjs"
     }
   },
   "files": [
