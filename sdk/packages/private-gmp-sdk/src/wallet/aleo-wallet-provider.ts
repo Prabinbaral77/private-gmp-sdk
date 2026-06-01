@@ -212,7 +212,13 @@ function mapReceiptError(transactionId: string, timeout: number, err: unknown): 
   }
   if (message.includes('rejected')) {
     return new TransactionError(
-      `Transaction ${transactionId} was rejected by the network. Check fee payer balance and inputs.`,
+      `Transaction ${transactionId} was rejected by the network — execution ran but finalize failed (an on-chain assert or mapping read did not pass), or the fee was insufficient. Verify the transition's preconditions and the fee payer's balance.`,
+      err,
+    );
+  }
+  if (message.includes('not found') || message.includes('404')) {
+    return new TransactionError(
+      `Transaction ${transactionId} was not found as a confirmed transaction — it was likely rejected during finalize or never accepted into a block. Verify the transition's preconditions and the fee payer's balance.`,
       err,
     );
   }

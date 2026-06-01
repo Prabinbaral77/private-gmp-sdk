@@ -16,14 +16,6 @@ export const VERU_PCC_VAULT_PROGRAM_NAME = 'veru_pcc_vault.aleo';
 export const VERU_PCC_VAULT_CLAIM_FUNCTION = 'claim';
 export const VERU_PCC_VAULT_WITHDRAW_FUNCTION = 'withdraw';
 
-/** Inclusive max for an Aleo u8 literal (2^8 - 1). */
-export const U8_MAX = 0xffn;
-/** Inclusive max for an Aleo u16 literal (2^16 - 1). */
-export const U16_MAX = 0xffffn;
-/** Inclusive max for an Aleo u64 literal (2^64 - 1). */
-export const U64_MAX = (1n << 64n) - 1n;
-/** Inclusive max for an Aleo u128 literal (2^128 - 1). */
-export const U128_MAX = (1n << 128n) - 1n;
-
-/** Required length for the `[u8; 32]` byte arrays accepted by claim/withdraw. */
-export const BYTES32_LENGTH = 32;
+// The Aleo literal bounds used by claim/withdraw are generic; their canonical
+// home is `@/constants/aleo-literals`. Re-exported here for backward compat.
+export { BYTES32_LENGTH, U128_MAX, U16_MAX, U64_MAX, U8_MAX } from './aleo-literals';

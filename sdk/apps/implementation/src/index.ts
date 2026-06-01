@@ -3,7 +3,7 @@ import { runExecute } from './commands/execute.js';
 import { runScan } from './commands/recordscanner.js';
 import { runSponsor } from './commands/sponsor.js';
 import { runVaultClaim, runVaultWithdraw } from './commands/vault.js';
-import { loadDotenv } from './utils.js';
+import { loadDotenv, printError } from './utils.js';
 
 const HELP = `Usage: sdk-tester <command> [options]
 
@@ -87,6 +87,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  console.error(err instanceof Error ? err.stack ?? err.message : err);
+  printError(err);
   process.exit(1);
 });

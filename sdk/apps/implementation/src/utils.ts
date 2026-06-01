@@ -68,6 +68,27 @@ export function printJson(value: unknown): void {
   console.log(JSON.stringify(value, replacer, 2));
 }
 
+/** Print an error as structured JSON on stderr. SDK errors expose a stable `code` and `cause` chain. */
+export function printError(err: unknown): void {
+  console.error(JSON.stringify({ ok: false, error: serializeError(err) }, replacer, 2));
+}
+
+function serializeError(err: unknown): Record<string, unknown> {
+  if (!(err instanceof Error)) {
+    return { message: String(err) };
+  }
+  const out: Record<string, unknown> = { name: err.name, message: err.message };
+  const code = (err as { code?: unknown }).code;
+  if (typeof code === 'string') {
+    out.code = code;
+  }
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause !== undefined) {
+    out.cause = serializeError(cause);
+  }
+  return out;
+}
+
 function replacer(_key: string, value: unknown): unknown {
   if (typeof value === 'bigint') return value.toString();
   if (value instanceof Uint8Array) return Buffer.from(value).toString('hex');

@@ -11,6 +11,8 @@
     "scan": "tsx --tsconfig tsconfig.json src/index.ts scan",
     "sponsor": "tsx --tsconfig tsconfig.json src/index.ts sponsor",
     "execute": "tsx --tsconfig tsconfig.json src/index.ts execute",
+    "vault-claim": "tsx --tsconfig tsconfig.json src/index.ts vault-claim",
+    "vault-withdraw": "tsx --tsconfig tsconfig.json src/index.ts vault-withdraw",
     "test": "tsx --test --test-reporter=spec tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },

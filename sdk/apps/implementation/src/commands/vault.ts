@@ -26,11 +26,9 @@ import { parseArgs, printJson, requireEnv } from '../utils.js';
 // `pnpm scan --mode hosted --programs token_registry.aleo`.
 // ----------------------------------------------------------------------------
 
-const BYTES32_ZERO = '0xF94F367CA34A89CE51D008C2BCFBA7800BC08717';
 const WITHDRAW_DATA = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
 
 async function buildSampleClaimParams(
-  walletAddress: string,
   network: AleoNetwork,
 ): Promise<VeruPccVaultClaimParams> {
   const payload = {
@@ -51,8 +49,8 @@ async function buildSampleClaimParams(
     payload,
     network,
   );
-  let expectedCommitmentHex = Buffer.from(expectedCommitmentBytes).toString("hex");
-  
+  const expectedCommitmentHex = Buffer.from(expectedCommitmentBytes).toString("hex");
+
   return {
     payload,
     receiverAddress: "aleo1fg8y0ax9g0yhahrknngzwxkpcf7ejy3mm6cent4mmtwew5ueps8s6jzl27",
@@ -95,15 +93,16 @@ export async function runVaultClaim(argv: string[]): Promise<void> {
   const wallet = buildWallet(readDelegateConfig(args.flags['delegate']), network);
   const address = await wallet.getAddress();
   const vault = new VeruPccVault(wallet);
-  const params = await buildSampleClaimParams(address, network);
+  const params = await buildSampleClaimParams(network);
   if (!wait) {
     const result = await vault.claim(params, callOptions);
-    printJson({ action: 'claim', address, params, ...result, confirmed: false });
+    printJson({ ok: true, action: 'claim', address, params, ...result, confirmed: false });
     return;
   }
 
   const { result, receipt } = await vault.claimAndWait(params, callOptions);
   printJson({
+    ok: true,
     action: 'claim',
     address,
     params,
@@ -131,12 +130,13 @@ export async function runVaultWithdraw(argv: string[]): Promise<void> {
 
   if (!wait) {
     const result = await vault.withdraw(params, callOptions);
-    printJson({ action: 'withdraw', address, params, ...result, confirmed: false });
+    printJson({ ok: true, action: 'withdraw', address, params, ...result, confirmed: false });
     return;
   }
 
   const { result, receipt } = await vault.withdrawAndWait(params, callOptions);
   printJson({
+    ok: true,
     action: 'withdraw',
     address,
     params,

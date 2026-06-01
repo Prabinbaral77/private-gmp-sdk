@@ -1,9 +1,5 @@
+import { BYTES32_LENGTH, U128_MAX, U16_MAX, U64_MAX } from '@/constants/aleo-literals';
 import {
-  BYTES32_LENGTH,
-  U128_MAX,
-  U16_MAX,
-  U64_MAX,
-  U8_MAX,
   VERU_PCC_VAULT_CLAIM_FUNCTION,
   VERU_PCC_VAULT_PROGRAM_NAME,
   VERU_PCC_VAULT_WITHDRAW_FUNCTION,
@@ -11,83 +7,33 @@ import {
 import type { AleoNetwork } from '@/types/derivation';
 import type { SdkModule } from '@/types/scanner';
 import type {
+  VeruPccVaultCallOptions,
+  VeruPccVaultClaimParams,
+  VeruPccVaultPayload,
+  VeruPccVaultWithdrawParams,
+} from '@/types/veru-pcc-vault';
+import type {
   AleoExecuteOptions,
   AleoExecutionResult,
   AleoTransactionReceipt,
   AleoWaitForReceiptOptions,
 } from '@/types/wallet';
+import { assertAddress, formatBytes32, formatField, formatUnsigned } from '@/utils/aleo-literals';
 import { ValidationError, WalletError } from '@/utils/errors';
 import type { AleoWalletProvider } from '@/wallet/aleo-wallet-provider';
 
-/** Per-call options for any `VeruPccVault` transition — everything except program/function/inputs. */
-export type VeruPccVaultCallOptions = Omit<
-  AleoExecuteOptions,
-  'programName' | 'functionName' | 'inputs'
->;
+// Re-export the public types from their home in `@/types` so consumers can keep
+// importing them from the contract entrypoint (see `contracts/index.ts`).
+export type { Bytes32Like, FieldLike, Uint } from '@/types/aleo-literals';
+export type {
+  VeruPccVaultCallOptions,
+  VeruPccVaultClaimParams,
+  VeruPccVaultPayload,
+  VeruPccVaultWithdrawParams,
+} from '@/types/veru-pcc-vault';
 
-/** Accepted numeric input form for any unsigned Aleo integer. */
-export type Uint = bigint | number | string;
-/** Accepted form for an Aleo `field` literal — already-stringified literals (`"1field"`) are passed through. */
-export type FieldLike = bigint | number | string;
-/** Accepted form for an Aleo `[u8; 32]` literal. */
-export type Bytes32Like = Uint8Array | readonly number[] | string;
-
-/**
- * Mirrors the `Payload` struct in `veru_pcc_vault.aleo`:
- *
- * ```leo
- * struct Payload {
- *   source_chain_id: u128,
- *   source_token_id: field,
- *   source_amount: u128,
- *   aleo_binding: address,
- *   destination_token_id: field,
- *   nonce: field
- * }
- * ```
- */
-export interface VeruPccVaultPayload {
-  readonly sourceChainId: Uint;
-  readonly sourceTokenId: FieldLike;
-  readonly sourceAmount: Uint;
-  readonly aleoBinding: string;
-  readonly destinationTokenId: FieldLike;
-  readonly nonce: FieldLike;
-}
-
-/**
- * Arguments to `claim(payload, receiver_address, claimable_amount, expec_commitment_hash)`.
- * `payload.aleoBinding` must equal the wallet's signing address — the on-chain
- * transition asserts `self.caller == payload.aleo_binding`.
- */
-export interface VeruPccVaultClaimParams {
-  readonly payload: VeruPccVaultPayload;
-  readonly receiverAddress: string;
-  readonly claimableAmount: Uint;
-  readonly expectedCommitmentHash: Bytes32Like;
-}
-
-/**
- * Arguments to `withdraw(...)`. `token` must be a `token_registry.aleo::Token`
- * record literal owned by the caller; the SDK passes it through as-is so the
- * record's plaintext (or ciphertext alias) is the caller's responsibility.
- */
-export interface VeruPccVaultWithdrawParams {
-  /** `token_registry.aleo::Token` record literal — passed verbatim as a private input. */
-  readonly token: string;
-  readonly connSn: Uint;
-  readonly data: Bytes32Like;
-  readonly feeAmount: Uint;
-  /** Basis points (0–10000). */
-  readonly feeBpsParam: number;
-  readonly amountSend: Uint;
-  readonly hubChainId: Uint;
-  readonly hubAddress: Bytes32Like;
-  readonly destReceiverAddrs: Bytes32Like;
-  readonly nonce: FieldLike;
-  readonly fallbackReceiverAddress: string;
-  readonly gmpFee: Uint;
-}
+/** A built program/function/inputs triple, ready to hand to `AleoWalletProvider#execute`. */
+type AleoCall = Pick<AleoExecuteOptions, 'programName' | 'functionName' | 'inputs'>;
 
 /**
  * Typed wrapper around `veru_pcc_vault.aleo`. Encodes the program name, function
@@ -134,10 +80,7 @@ export class VeruPccVault {
     options: VeruPccVaultCallOptions = {},
     receiptOptions: AleoWaitForReceiptOptions = {},
   ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
-    return this.wallet.executeAndWait(
-      { ...options, ...buildWithdrawCall(params) },
-      receiptOptions,
-    );
+    return this.wallet.executeAndWait({ ...options, ...buildWithdrawCall(params) }, receiptOptions);
   }
 
   /**
@@ -177,35 +120,24 @@ export class VeruPccVault {
   }
 }
 
-async function loadProvableSdk(network: AleoNetwork): Promise<SdkModule> {
-  const sub = network === 'mainnet' ? 'mainnet.js' : 'testnet.js';
-  try {
-    return (await import(`@provablehq/sdk/${sub}`)) as SdkModule;
-  } catch (err) {
-    throw new WalletError(
-      `VeruPccVault.computePayloadCommitmentHash requires optional peer dep '@provablehq/sdk' (subpath '${sub}').`,
-      err,
-    );
-  }
-}
+/* -------------------------------------------------------------------------- */
+/*  Call builders — map typed params to a validated program/function/inputs   */
+/* -------------------------------------------------------------------------- */
 
-function buildClaimCall(
-  params: VeruPccVaultClaimParams,
-): Pick<AleoExecuteOptions, 'programName' | 'functionName' | 'inputs'> {
-  const payloadLiteral = formatPayload(params.payload);
-  const receiver = assertAddress(params.receiverAddress, 'receiverAddress');
-  const claimable = formatUnsigned(params.claimableAmount, 'claimableAmount', 128, U128_MAX);
-  const commitment = formatBytes32(params.expectedCommitmentHash, 'expectedCommitmentHash');
+function buildClaimCall(params: VeruPccVaultClaimParams): AleoCall {
   return {
     programName: VERU_PCC_VAULT_PROGRAM_NAME,
     functionName: VERU_PCC_VAULT_CLAIM_FUNCTION,
-    inputs: [payloadLiteral, receiver, claimable, commitment],
+    inputs: [
+      formatPayload(params.payload),
+      assertAddress(params.receiverAddress, 'receiverAddress'),
+      formatUnsigned(params.claimableAmount, 'claimableAmount', 128, U128_MAX),
+      formatBytes32(params.expectedCommitmentHash, 'expectedCommitmentHash'),
+    ],
   };
 }
 
-function buildWithdrawCall(
-  params: VeruPccVaultWithdrawParams,
-): Pick<AleoExecuteOptions, 'programName' | 'functionName' | 'inputs'> {
+function buildWithdrawCall(params: VeruPccVaultWithdrawParams): AleoCall {
   if (typeof params.token !== 'string' || params.token.length === 0) {
     throw new ValidationError('token must be a non-empty token_registry.aleo::Token record literal.');
   }
@@ -229,106 +161,31 @@ function buildWithdrawCall(
   };
 }
 
+/** Render a `Payload` struct as its Aleo literal, validating every field. */
 function formatPayload(payload: VeruPccVaultPayload): string {
-  const sourceChainId = formatUnsigned(payload.sourceChainId, 'payload.sourceChainId', 128, U128_MAX);
-  const sourceTokenId = formatField(payload.sourceTokenId, 'payload.sourceTokenId');
-  const sourceAmount = formatUnsigned(payload.sourceAmount, 'payload.sourceAmount', 128, U128_MAX);
-  const aleoBinding = assertAddress(payload.aleoBinding, 'payload.aleoBinding');
-  const destinationTokenId = formatField(payload.destinationTokenId, 'payload.destinationTokenId');
-  const nonce = formatField(payload.nonce, 'payload.nonce');
-  return (
-    '{' +
-    `source_chain_id: ${sourceChainId}, ` +
-    `source_token_id: ${sourceTokenId}, ` +
-    `source_amount: ${sourceAmount}, ` +
-    `aleo_binding: ${aleoBinding}, ` +
-    `destination_token_id: ${destinationTokenId}, ` +
-    `nonce: ${nonce}` +
-    '}'
-  );
+  const fields = {
+    source_chain_id: formatUnsigned(payload.sourceChainId, 'payload.sourceChainId', 128, U128_MAX),
+    source_token_id: formatField(payload.sourceTokenId, 'payload.sourceTokenId'),
+    source_amount: formatUnsigned(payload.sourceAmount, 'payload.sourceAmount', 128, U128_MAX),
+    aleo_binding: assertAddress(payload.aleoBinding, 'payload.aleoBinding'),
+    destination_token_id: formatField(payload.destinationTokenId, 'payload.destinationTokenId'),
+    nonce: formatField(payload.nonce, 'payload.nonce'),
+  };
+  const body = Object.entries(fields)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(', ');
+  return `{${body}}`;
 }
 
-function formatUnsigned(value: Uint, paramName: string, bits: 8 | 16 | 32 | 64 | 128, max: bigint): string {
-  const n = toBigInt(value, paramName);
-  if (n < 0n || n > max) {
-    throw new ValidationError(`${paramName} must be in [0, ${max.toString()}] (u${bits}), received ${n.toString()}.`);
-  }
-  return `${n.toString()}u${bits}`;
-}
-
-function formatField(value: FieldLike, paramName: string): string {
-  if (typeof value === 'string') {
-    // Accept a literal like "123field" or a bare numeric string.
-    if (value.endsWith('field')) {
-      const numeric = value.slice(0, -'field'.length);
-      assertNonNegativeIntegerString(numeric, paramName);
-      return value;
-    }
-    assertNonNegativeIntegerString(value, paramName);
-    return `${value}field`;
-  }
-  const n = toBigInt(value, paramName);
-  if (n < 0n) {
-    throw new ValidationError(`${paramName} must be a non-negative field, received ${n.toString()}.`);
-  }
-  return `${n.toString()}field`;
-}
-
-function formatBytes32(value: Bytes32Like, paramName: string): string {
-  if (typeof value === 'string') {
-    const hex = value.startsWith('0x') || value.startsWith('0X') ? value.slice(2) : value;
-    if (!/^[0-9a-fA-F]+$/.test(hex) || hex.length !== BYTES32_LENGTH * 2) {
-      throw new ValidationError(`${paramName} must be a ${BYTES32_LENGTH}-byte hex string.`);
-    }
-    const bytes = new Uint8Array(BYTES32_LENGTH);
-    for (let i = 0; i < BYTES32_LENGTH; i += 1) {
-      bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-    }
-    return formatByteArrayLiteral(bytes);
-  }
-  const arr = value instanceof Uint8Array ? value : Uint8Array.from(value);
-  if (arr.length !== BYTES32_LENGTH) {
-    throw new ValidationError(`${paramName} must be exactly ${BYTES32_LENGTH} bytes, received ${arr.length}.`);
-  }
-  for (let i = 0; i < arr.length; i += 1) {
-    const byte = arr[i] as number;
-    if (!Number.isInteger(byte) || byte < 0 || byte > Number(U8_MAX)) {
-      throw new ValidationError(`${paramName}[${i}] must be a u8 in [0, 255], received ${String(byte)}.`);
-    }
-  }
-  return formatByteArrayLiteral(arr);
-}
-
-function formatByteArrayLiteral(bytes: Uint8Array): string {
-  const parts = new Array<string>(bytes.length);
-  for (let i = 0; i < bytes.length; i += 1) parts[i] = `${bytes[i] as number}u8`;
-  return `[${parts.join(', ')}]`;
-}
-
-function assertAddress(value: string, paramName: string): string {
-  if (typeof value !== 'string' || !value.startsWith('aleo1')) {
-    throw new ValidationError(`${paramName} must be an Aleo address (aleo1…), received ${String(value)}.`);
-  }
-  return value;
-}
-
-function toBigInt(value: Uint, paramName: string): bigint {
-  if (typeof value === 'bigint') return value;
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value) || !Number.isInteger(value)) {
-      throw new ValidationError(`${paramName} must be an integer, received ${String(value)}.`);
-    }
-    return BigInt(value);
-  }
-  if (typeof value === 'string') {
-    assertNonNegativeIntegerString(value, paramName);
-    return BigInt(value);
-  }
-  throw new ValidationError(`${paramName} must be bigint | number | string, received ${typeof value}.`);
-}
-
-function assertNonNegativeIntegerString(value: string, paramName: string): void {
-  if (!/^[0-9]+$/.test(value)) {
-    throw new ValidationError(`${paramName} must be a non-negative integer string, received '${value}'.`);
+/** Lazy-load the network-specific `@provablehq/sdk` WASM build (optional peer dep). */
+async function loadProvableSdk(network: AleoNetwork): Promise<SdkModule> {
+  const sub = network === 'mainnet' ? 'mainnet.js' : 'testnet.js';
+  try {
+    return (await import(`@provablehq/sdk/${sub}`)) as SdkModule;
+  } catch (err) {
+    throw new WalletError(
+      `VeruPccVault.computePayloadCommitmentHash requires optional peer dep '@provablehq/sdk' (subpath '${sub}').`,
+      err,
+    );
   }
 }
