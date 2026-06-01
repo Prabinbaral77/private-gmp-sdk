@@ -27,6 +27,36 @@ import { parseArgs, printJson, requireEnv } from '../utils.js';
 // ----------------------------------------------------------------------------
 
 const WITHDRAW_DATA = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+const HUB_ADDRESS = '0x1B06762a8B9286f6A1B290579834e555a5F60557';
+const HUB_CHAIN_ID = '146'; 
+
+// Mint params for `token_registry.aleo::transfer_public_to_private` — used to
+// produce a fresh Token record for the withdraw test. Requires the wallet to
+// hold at least WITHDRAW_MINT_AMOUNT of WITHDRAW_TOKEN_ID in its public balance,
+// and the token to already be registered.
+const TOKEN_REGISTRY_PROGRAM = 'token_registry.aleo';
+const TOKEN_REGISTRY_TRANSFER_FN = 'transfer_public_to_private';
+const WITHDRAW_TOKEN_ID = '987654321field';
+const WITHDRAW_MINT_AMOUNT = `${BigInt(1 * 10 ** 6)}u128`; // 100_000_000
+const WITHDRAW_EXTERNAL_AUTH_REQUIRED = 'false';
+
+/**
+ * Convert a hex value into a 32-byte array — the `[u8; 32]` form the contract
+ * sees. Shorter values (e.g. a 20-byte EVM address) are left-padded with zeros.
+ * Passing this `number[]` to a `Bytes32Like` field encodes to `[12u8, 34u8, …]`.
+ */
+function toBytes32(hex: string): number[] {
+  const raw = hex.startsWith('0x') || hex.startsWith('0X') ? hex.slice(2) : hex;
+  if (raw.length > 64) {
+    throw new Error(`${hex} is longer than 32 bytes (${raw.length / 2} bytes).`);
+  }
+  const padded = raw.padStart(64, '0');
+  const bytes: number[] = [];
+  for (let i = 0; i < 64; i += 2) {
+    bytes.push(parseInt(padded.slice(i, i + 2), 16));
+  }
+  return bytes;
+}
 
 async function buildSampleClaimParams(
   network: AleoNetwork,
@@ -45,35 +75,74 @@ async function buildSampleClaimParams(
   // have populated `commitments[hash]` via `recv_message`, otherwise the
   // mapping read panics. Print the hash so you can drive `recv_message` with
   // the same value before retrying claim.
-  const expectedCommitmentBytes = await VeruPccVault.computePayloadCommitmentHash(
+  const expectedCommitmentHash = await VeruPccVault.computePayloadCommitmentHash(
     payload,
     network,
   );
-  const expectedCommitmentHex = Buffer.from(expectedCommitmentBytes).toString("hex");
+  // Log the hex form so you can drive `recv_message` with the same commitment.
+  console.log('payload commitment (hex):', Buffer.from(expectedCommitmentHash).toString('hex'));
 
   return {
     payload,
     receiverAddress: "aleo1fg8y0ax9g0yhahrknngzwxkpcf7ejy3mm6cent4mmtwew5ueps8s6jzl27",
     claimableAmount: '100',
-    expectedCommitmentHash: expectedCommitmentHex,
+    // `Bytes32Like` accepts the Uint8Array directly — no hex round-trip needed.
+    expectedCommitmentHash,
   };
 }
 
-async function buildSampleWithdrawParams(walletAddress: string): Promise<VeruPccVaultWithdrawParams> {
+/**
+ * Mint a fresh `token_registry.aleo::Token` record into the wallet by calling
+ * `transfer_public_to_private(token_id, recipient, amount, external_auth)`, then
+ * pull the decrypted plaintext record literal out of the confirmed transaction.
+ * The returned string is suitable as the `token` input to `withdraw`.
+ */
+async function mintTokenRecord(wallet: AleoWalletProvider): Promise<string> {
+  const recipient = await wallet.getAddress();
+  const { result } = await wallet.executeAndWait({
+    programName: TOKEN_REGISTRY_PROGRAM,
+    functionName: TOKEN_REGISTRY_TRANSFER_FN,
+    inputs: [WITHDRAW_TOKEN_ID, recipient, WITHDRAW_MINT_AMOUNT, WITHDRAW_EXTERNAL_AUTH_REQUIRED],
+  });
+  const owned = await wallet.getOwnedRecordsFromTransaction(result.transactionId);
+  const tokenRecord = owned[0];
+  if (!tokenRecord) {
+    throw new Error(
+      `No owned records found in ${TOKEN_REGISTRY_PROGRAM}/${TOKEN_REGISTRY_TRANSFER_FN} tx ${result.transactionId} — check the wallet's public balance for ${WITHDRAW_TOKEN_ID} and that the token is registered.`,
+    );
+  }
+  return tokenRecord;
+}
+
+async function buildSampleWithdrawParams(
+  wallet: AleoWalletProvider,
+): Promise<VeruPccVaultWithdrawParams> {
+  const walletAddress = await wallet.getAddress();
+  // Mint a real Token record (token_id 987654321field) so withdraw has a
+  // private input to consume, rather than a hand-written literal.
+  const token = await mintTokenRecord(wallet);
   return {
-    // Replace with a real token_registry.aleo::Token record literal from your wallet.
-    token: `{ owner: ${walletAddress}.private, token_id: 1field.private, amount: 1000u128.private, external_authorization_required: false.private, authorized_until: 0u32.private, _nonce: 1234group.public }`,
-    connSn: '1',
-    data: WITHDRAW_DATA,
-    feeAmount: '10',
-    feeBpsParam: 100,
-    amountSend: '1000',
-    hubChainId: '1',
-    hubAddress: WITHDRAW_DATA,
-    destReceiverAddrs: WITHDRAW_DATA,
-    nonce: '1',
+    token,
+    // Uint → bigint
+    connSn: BigInt(Math.floor(Math.random() * 93407655373) + 1),
+    // Bytes32Like → [u8; 32] byte array (the contract form)
+    data: toBytes32(WITHDRAW_DATA),
+    // Uint → bigint
+    feeAmount: 0n,
+    // number — basis points (0–10000)
+    feeBpsParam: 0,
+    // Uint → bigint
+    amountSend: 100n,
+    hubChainId: BigInt(HUB_CHAIN_ID),
+    // Bytes32Like — EVM address is 20 bytes, left-padded to 32
+    hubAddress: toBytes32(HUB_ADDRESS),
+    destReceiverAddrs: toBytes32(WITHDRAW_DATA),
+    // FieldLike → bigint
+    nonce: BigInt(Math.floor(Math.random() * 93407655373) + 1),
+    // string — Aleo address
     fallbackReceiverAddress: walletAddress,
-    gmpFee: '0',
+    // Uint → bigint
+    gmpFee: 0n,
   };
 }
 
@@ -126,8 +195,9 @@ export async function runVaultWithdraw(argv: string[]): Promise<void> {
   const wallet = buildWallet(readDelegateConfig(args.flags['delegate']), network);
   const address = await wallet.getAddress();
   const vault = new VeruPccVault(wallet);
-  const params = await buildSampleWithdrawParams(address);
-
+  const params = await buildSampleWithdrawParams(wallet);
+  console.log('Using withdraw params:', params);
+  // return;
   if (!wait) {
     const result = await vault.withdraw(params, callOptions);
     printJson({ ok: true, action: 'withdraw', address, params, ...result, confirmed: false });

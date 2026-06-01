@@ -133,6 +133,45 @@ export class AleoWalletProvider {
     return { result, receipt };
   }
 
+  /**
+   * Fetch a confirmed transaction by id and return the plaintext literals of
+   * every output record owned by this wallet. Useful for chaining transitions
+   * that consume a record produced by an earlier transition (e.g. mint a
+   * `token_registry.aleo::Token` via `transfer_public_to_private`, then feed
+   * it back as a private input on the next call).
+   *
+   * Returns an empty array if the transaction has no records or the wallet
+   * isn't the owner of any of them.
+   */
+  async getOwnedRecordsFromTransaction(transactionId: string): Promise<string[]> {
+    const { account, networkClient } = await this.ensureInitialized();
+    let transactionObject: Awaited<
+      ReturnType<InstanceType<SdkModule['AleoNetworkClient']>['getTransactionObject']>
+    >;
+    try {
+      transactionObject = await networkClient.getTransactionObject(transactionId);
+    } catch (err) {
+      throw new TransactionError(
+        `Failed to fetch transaction ${transactionId}: ${errorMessage(err)}`,
+        err,
+      );
+    }
+    const viewKey = account.viewKey();
+    type CiphertextLike = {
+      isOwner: (vk: typeof viewKey) => boolean;
+      decrypt: (vk: typeof viewKey) => { toString: () => string };
+    };
+    const records = transactionObject.records() as Array<{ record?: CiphertextLike } | undefined>;
+    const owned: string[] = [];
+    for (const entry of records) {
+      const ciphertext = entry?.record;
+      if (!ciphertext) continue;
+      if (!ciphertext.isOwner(viewKey)) continue;
+      owned.push(ciphertext.decrypt(viewKey).toString());
+    }
+    return owned;
+  }
+
   private ensureInitialized(): Promise<InitializedState> {
     if (!this.initPromise) {
       this.initPromise = this.initialize().catch((err) => {
