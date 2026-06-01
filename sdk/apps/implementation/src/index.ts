@@ -2,6 +2,7 @@ import { runDerive } from './commands/derive-aleo-wallet.js';
 import { runExecute } from './commands/execute.js';
 import { runScan } from './commands/recordscanner.js';
 import { runSponsor } from './commands/sponsor.js';
+import { runVaultClaim, runVaultWithdraw } from './commands/vault.js';
 import { loadDotenv } from './utils.js';
 
 const HELP = `Usage: sdk-tester <command> [options]
@@ -25,6 +26,19 @@ Commands:
       into the SDK; r0 and r1 are validated as u32 before signing. The wallet
       (USER_ALEO_PRIVATE_KEY) pays its own fee — no sponsor. Pass --delegate
       to off-load proving to PROVER_URL (with PROVER_API_KEY / PROVER_CONSUMER_ID).
+
+  vault-claim [--priority 0] [--private-fee false] [--wait true] [--delegate [url]]
+      Call veru_pcc_vault.aleo/claim via the VeruPccVault SDK wrapper using the
+      sample params embedded in commands/vault.ts (buildSampleClaimParams).
+      The wallet's address auto-fills payload.aleoBinding so the on-chain
+      'self.caller == payload.aleo_binding' assertion passes. Edit the sample
+      in vault.ts to change inputs.
+
+  vault-withdraw [--priority 0] [--private-fee false] [--wait true] [--delegate [url]]
+      Call veru_pcc_vault.aleo/withdraw via VeruPccVault using the sample params
+      in commands/vault.ts (buildSampleWithdrawParams). The wallet must own
+      the token_registry.aleo::Token record referenced by params.token — edit
+      the sample with a real record literal (from 'pnpm scan') before running.
 
 Environment (read from apps/implementation/.env):
   ALEO_NETWORK, ALEO_API_HOST
@@ -58,6 +72,12 @@ async function main(): Promise<void> {
       return;
     case 'execute':
       await runExecute([sub, ...rest].filter(Boolean) as string[]);
+      return;
+    case 'vault-claim':
+      await runVaultClaim([sub, ...rest].filter(Boolean) as string[]);
+      return;
+    case 'vault-withdraw':
+      await runVaultWithdraw([sub, ...rest].filter(Boolean) as string[]);
       return;
     default:
       console.error(`Unknown command: ${command}\n`);
