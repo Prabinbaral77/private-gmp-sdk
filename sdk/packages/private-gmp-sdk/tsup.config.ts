@@ -9,6 +9,7 @@ export default defineConfig({
     'fee-sponsor/index': 'src/fee-sponsor/index.ts',
     'wallet/index': 'src/wallet/index.ts',
     'contracts/index': 'src/contracts/index.ts',
+    'mappings/index': 'src/mappings/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,
@@ -19,5 +20,5 @@ export default defineConfig({
   treeshake: true,
   target: 'node18',
   outDir: 'dist',
-  external: ['@provablehq/sdk'],
+  external: ['@provablehq/sdk', 'viem'],
 });

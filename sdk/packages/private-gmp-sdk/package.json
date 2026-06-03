@@ -43,6 +43,11 @@
       "types": "./dist/contracts/index.d.ts",
       "import": "./dist/contracts/index.js",
       "require": "./dist/contracts/index.cjs"
+    },
+    "./mappings": {
+      "types": "./dist/mappings/index.d.ts",
+      "import": "./dist/mappings/index.js",
+      "require": "./dist/mappings/index.cjs"
     }
   },
   "files": [
@@ -70,14 +75,17 @@
     "@provablehq/sdk": "*"
   },
   "peerDependencies": {
-    "@provablehq/sdk": "*"
+    "@provablehq/sdk": "*",
+    "viem": "^2.0.0"
   },
   "peerDependenciesMeta": {
-    "@provablehq/sdk": { "optional": true }
+    "@provablehq/sdk": { "optional": true },
+    "viem": { "optional": true }
   },
   "devDependencies": {
     "@provablehq/sdk": "^0.10.3",
     "@types/node": "^20.11.30",
+    "viem": "^2.23.2",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
     "dotenv": "^16.4.5",

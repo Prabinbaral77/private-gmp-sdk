@@ -1,5 +1,6 @@
 import { runDerive } from './commands/derive-aleo-wallet.js';
 import { runExecute } from './commands/execute.js';
+import { runMapping } from './commands/mapping.js';
 import { runScan } from './commands/recordscanner.js';
 import { runSponsor } from './commands/sponsor.js';
 import { runVaultClaim, runVaultRefund, runVaultWithdraw } from './commands/vault.js';
@@ -46,6 +47,14 @@ Commands:
       source_amount, nonce) triple must match an outbound intent the wallet
       previously submitted via withdraw — edit the sample before running.
 
+  mapping --chain <aleo|evm> ...
+      Generic read of on-chain key/value state via the SDK's MappingReader.
+      aleo: --program <p.aleo> --mapping <name> --key <literal> [--network testnet] [--rpc URL]
+      evm:  --rpc <url> --address 0x.. --signature "function m(address) view returns (uint256)"
+            --key <key> [--key <key2> ...] [--block latest]
+      The EVM signature is the mapping's public getter; --key is repeatable for
+      nested mappings. EVM reads require the optional 'viem' peer dep.
+
 Environment (read from apps/implementation/.env):
   ALEO_NETWORK, ALEO_API_HOST
   USER_ALEO_PRIVATE_KEY
@@ -87,6 +96,9 @@ async function main(): Promise<void> {
       return;
     case 'vault-refund':
       await runVaultRefund([sub, ...rest].filter(Boolean) as string[]);
+      return;
+    case 'mapping':
+      await runMapping([sub, ...rest].filter(Boolean) as string[]);
       return;
     default:
       console.error(`Unknown command: ${command}\n`);
