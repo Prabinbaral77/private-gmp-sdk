@@ -2,6 +2,7 @@ import { BYTES32_LENGTH, U128_MAX, U16_MAX, U64_MAX } from '@/constants/aleo-lit
 import {
   VERU_PCC_VAULT_CLAIM_FUNCTION,
   VERU_PCC_VAULT_COMMITMENTS_MAPPING,
+  VERU_PCC_VAULT_INTENT_STATUS,
   VERU_PCC_VAULT_PROGRAM_NAME,
   VERU_PCC_VAULT_REFUND_FUNCTION,
   VERU_PCC_VAULT_WITHDRAW_COMMITMENT_MAPPING,
@@ -168,21 +169,61 @@ export class VeruPccVault {
     }
   }
 
-  /** Call `refund(source_token_id, source_amount, nonce)`. */
-  refund(
+  /**
+   * Call `refund(source_token_id, source_amount, nonce)`.
+   *
+   * Pre-flight: reads `withdraw_commitment[expectedCommitmentHash]` and only
+   * proceeds when the entry exists with `intent_status == TAG_INTENT_FAILED`
+   * (`2u8`) — the GMP message came back unsuccessful, so the funds are
+   * reclaimable. A missing entry or any other status (pending, completed,
+   * already refunded) is rejected with a {@link ValidationError}.
+   */
+  async refund(
     params: VeruPccVaultRefundParams,
     options: VeruPccVaultCallOptions = {},
   ): Promise<AleoExecutionResult> {
+    await this.assertRefundable(params);
     return this.wallet.execute({ ...options, ...buildRefundCall(params) });
   }
 
   /** Call `refund(...)` and block until the network confirms the transaction. */
-  refundAndWait(
+  async refundAndWait(
     params: VeruPccVaultRefundParams,
     options: VeruPccVaultCallOptions = {},
     receiptOptions: AleoWaitForReceiptOptions = {},
   ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
+    await this.assertRefundable(params);
     return this.wallet.executeAndWait({ ...options, ...buildRefundCall(params) }, receiptOptions);
+  }
+
+  /**
+   * Read the on-chain `withdraw_commitment` mapping for this intent's commitment
+   * hash and assert it is refundable right now. The entry must exist with
+   * `intent_status == TAG_INTENT_FAILED (2u8)`; anything else throws:
+   * - absent entry (`null`) → no such intent, "nothing to refund"
+   * - status != FAILED (pending/completed/refunded) → "not refundable"
+   */
+  private async assertRefundable(params: VeruPccVaultRefundParams): Promise<void> {
+    const key = formatBytes32(params.expectedCommitmentHash, 'expectedCommitmentHash');
+    const value = await this.mappingReader.readAleoMapping({
+      network: this.wallet.network,
+      rpcUrl: this.wallet.rpcUrl,
+      program: VERU_PCC_VAULT_PROGRAM_NAME,
+      mapping: VERU_PCC_VAULT_WITHDRAW_COMMITMENT_MAPPING,
+      key,
+    });
+    const where = `${VERU_PCC_VAULT_PROGRAM_NAME}/${VERU_PCC_VAULT_WITHDRAW_COMMITMENT_MAPPING}[${key}]`;
+    if (isEmptyMappingValue(value)) {
+      throw new ValidationError(
+        `Cannot refund: no intent found at ${where}. There is nothing to refund for this commitment — verify the commitment hash matches the original withdraw.`,
+      );
+    }
+    const status = parseIntentStatus(value);
+    if (status !== VERU_PCC_VAULT_INTENT_STATUS.FAILED) {
+      throw new ValidationError(
+        `Cannot refund: ${where}.intent_status is ${describeIntentStatus(status)}, but a refund requires TAG_INTENT_FAILED (${VERU_PCC_VAULT_INTENT_STATUS.FAILED}u8). Only a failed intent can be refunded.`,
+      );
+    }
   }
 
   /**
@@ -290,6 +331,39 @@ function parseCommitmentStatus(value: string | null | undefined): boolean | null
   const match = /status\s*:\s*(true|false)/.exec(trimmed);
   if (!match) return null;
   return match[1] === 'true';
+}
+
+/**
+ * Extract the `intent_status` tag (`u8`) from a `withdraw_commitment` mapping
+ * value. The stored literal looks like
+ * `{ token: 1field, amount: 100u128, intent_status: 2u8, nonce: 3field }`.
+ * Returns the parsed number, or `null` when absent or unparseable.
+ */
+function parseIntentStatus(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed === 'null') return null;
+  const match = /intent_status\s*:\s*(\d+)u8/.exec(trimmed);
+  if (!match) return null;
+  return Number(match[1]);
+}
+
+/** Render an `intent_status` tag as a human-readable label for error messages. */
+function describeIntentStatus(status: number | null): string {
+  switch (status) {
+    case VERU_PCC_VAULT_INTENT_STATUS.PENDING:
+      return `pending (${status}u8)`;
+    case VERU_PCC_VAULT_INTENT_STATUS.COMPLETED:
+      return `completed (${status}u8)`;
+    case VERU_PCC_VAULT_INTENT_STATUS.FAILED:
+      return `failed (${status}u8)`;
+    case VERU_PCC_VAULT_INTENT_STATUS.REFUNDED:
+      return `already refunded (${status}u8)`;
+    case null:
+      return 'unparseable';
+    default:
+      return `unknown (${status}u8)`;
+  }
 }
 
 /**

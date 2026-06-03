@@ -176,14 +176,37 @@ async function buildSampleWithdrawParams(
 // match an outbound intent the wallet previously submitted via `withdraw` —
 // the triple identifies which intent's funds to reclaim. Swap for real values
 // before running against testnet.
-function buildSampleRefundParams(): VeruPccVaultRefundParams {
+async function buildSampleRefundParams(
+  wallet: AleoWalletProvider,
+  network: AleoNetwork,
+): Promise<VeruPccVaultRefundParams> {
+  const walletAddress = await wallet.getAddress();
+  // FieldLike → bigint. Must match the nonce of the original withdraw whose
+  // commitment we're refunding.
+  const nonce = BigInt(Math.floor(Math.random() * 93407655373) + 1);
+  // Recompute the same commitment hash the original `withdraw` derived (see
+  // buildSampleWithdrawParams). The SDK's pre-flight refund check reads
+  // withdraw_commitment[hash] and only proceeds if intent_status == FAILED.
+  // Swap these payload fields for the real intent's before running.
+  const expectedCommitmentHash = await VeruPccVault.computePayloadCommitmentHash(
+    {
+      sourceChainId: '6694886634403', // veru_pcc_vault.aleo::ALEO_CHAIN_ID
+      sourceTokenId: WITHDRAW_TOKEN_ID.replace(/u128$|field$/, ''),
+      sourceAmount: '100',
+      aleoBinding: walletAddress,
+      destinationTokenId: WITHDRAW_TOKEN_ID.replace(/u128$|field$/, ''),
+      nonce: nonce.toString(),
+    },
+    network,
+  );
   return {
     // FieldLike → bigint
     sourceTokenId: BigInt(WITHDRAW_TOKEN_ID.replace(/u128$|field$/, '')),
     // Uint → bigint
     sourceAmount: 100n,
-    // FieldLike → bigint
-    nonce: BigInt(Math.floor(Math.random() * 93407655373) + 1),
+    nonce,
+    // Bytes32Like — the withdraw_commitment key the SDK pre-flights against.
+    expectedCommitmentHash,
   };
 }
 
@@ -270,8 +293,7 @@ export async function runVaultRefund(argv: string[]): Promise<void> {
   const wallet = buildWallet(readDelegateConfig(args.flags['delegate']), network);
   const address = await wallet.getAddress();
   const vault = new VeruPccVault(wallet);
-  const params = buildSampleRefundParams();
-  console.log('Using refund params:', params);
+  const params = await buildSampleRefundParams(wallet, network);
   if (!wait) {
     const result = await vault.refund(params, callOptions);
     printJson({ ok: true, action: 'refund', address, params, ...result, confirmed: false });

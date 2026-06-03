@@ -53,6 +53,28 @@ export const VERU_PCC_VAULT_COMMITMENTS_MAPPING = 'commitments';
  */
 export const VERU_PCC_VAULT_WITHDRAW_COMMITMENT_MAPPING = 'withdraw_commitment';
 
+/**
+ * `Withdraw.intent_status` tag values (`u8`) used by `veru_pcc_vault.aleo` to
+ * track an outbound intent's lifecycle:
+ *
+ * ```leo
+ * const TAG_INTENT_PENDING:   u8 = 0u8;
+ * const TAG_INTENT_COMPLETED: u8 = 1u8;
+ * const TAG_INTENT_FAILED:    u8 = 2u8;
+ * const TAG_INTENT_REFUNDED:  u8 = 3u8;
+ * ```
+ *
+ * The SDK reads these from the `withdraw_commitment` mapping during pre-flight
+ * checks — `refund` only proceeds when the entry is `FAILED` (the intent's GMP
+ * message came back unsuccessful, so the funds are reclaimable).
+ */
+export const VERU_PCC_VAULT_INTENT_STATUS = {
+  PENDING: 0,
+  COMPLETED: 1,
+  FAILED: 2,
+  REFUNDED: 3,
+} as const;
+
 // The Aleo literal bounds used by claim/withdraw are generic; their canonical
 // home is `@/constants/aleo-literals`. Re-exported here for backward compat.
 export { BYTES32_LENGTH, U128_MAX, U16_MAX, U64_MAX, U8_MAX } from './aleo-literals';

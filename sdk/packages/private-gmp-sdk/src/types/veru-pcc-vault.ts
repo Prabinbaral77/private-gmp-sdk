@@ -92,4 +92,12 @@ export interface VeruPccVaultRefundParams {
   readonly sourceTokenId: FieldLike;
   readonly sourceAmount: Uint;
   readonly nonce: FieldLike;
+  /**
+   * The intent's commitment hash — the `[u8; 32]` key into the
+   * `withdraw_commitment` mapping. Used only for the SDK's pre-flight check:
+   * `refund` is rejected unless the entry exists with
+   * `intent_status == TAG_INTENT_FAILED (2u8)`. Compute it the same way as the
+   * matching `withdraw`, via {@link VeruPccVault.computePayloadCommitmentHash}.
+   */
+  readonly expectedCommitmentHash: Bytes32Like;
 }
