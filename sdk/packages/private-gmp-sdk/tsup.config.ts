@@ -10,6 +10,7 @@ export default defineConfig({
     'wallet/index': 'src/wallet/index.ts',
     'contracts/index': 'src/contracts/index.ts',
     'mappings/index': 'src/mappings/index.ts',
+    'consumer/index': 'src/consumer/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

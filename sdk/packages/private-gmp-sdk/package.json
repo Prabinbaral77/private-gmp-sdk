@@ -48,6 +48,11 @@
       "types": "./dist/mappings/index.d.ts",
       "import": "./dist/mappings/index.js",
       "require": "./dist/mappings/index.cjs"
+    },
+    "./consumer": {
+      "types": "./dist/consumer/index.d.ts",
+      "import": "./dist/consumer/index.js",
+      "require": "./dist/consumer/index.cjs"
     }
   },
   "files": [

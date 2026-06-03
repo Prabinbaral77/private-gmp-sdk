@@ -1,3 +1,4 @@
+import { runConsumer } from './commands/consumer.js';
 import { runDerive } from './commands/derive-aleo-wallet.js';
 import { runExecute } from './commands/execute.js';
 import { runMapping } from './commands/mapping.js';
@@ -15,6 +16,12 @@ Commands:
 
   scan --mode <hosted|sdk> --programs <a.aleo,b.aleo> [--limit 25]
       Scan owned records for the configured USER_ALEO_PRIVATE_KEY.
+
+  consumer [--address aleo1...] [--username <name>] [--url https://api.provable.com]
+      Register a Provable consumer (POST /consumers) to mint the
+      consumerId / apiKey pair used for hosted scanning and delegated proving.
+      The username is namespaced by --address, or by the address derived from
+      USER_ALEO_PRIVATE_KEY when --address is omitted.
 
   sponsor --program <name.aleo> --function <fn> --inputs <a,b,...> [--priority 0] [--broadcast true]
       Build a program authorization locally, request a sponsored fee
@@ -81,6 +88,9 @@ async function main(): Promise<void> {
       return;
     case 'scan':
       await runScan([sub, ...rest].filter(Boolean) as string[]);
+      return;
+    case 'consumer':
+      await runConsumer([sub, ...rest].filter(Boolean) as string[]);
       return;
     case 'sponsor':
       await runSponsor([sub, ...rest].filter(Boolean) as string[]);

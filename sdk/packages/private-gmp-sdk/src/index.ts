@@ -1,4 +1,5 @@
 export * from './constants';
+export * from './consumer';
 export * from './derivation';
 export * from './mappings';
 export * from './scanner';

@@ -19,6 +19,7 @@
     "implementation": "pnpm --filter @venture23-aleo/implementation run start",
     "derive": "pnpm --filter @venture23-aleo/implementation run start derive",
     "scan": "pnpm --filter @venture23-aleo/implementation run start scan",
+    "consumer": "pnpm --filter @venture23-aleo/implementation run start consumer",
     "execute": "pnpm --filter @venture23-aleo/implementation run start execute",
     "vault-claim": "pnpm --filter @venture23-aleo/implementation run start vault-claim",
     "vault-withdraw": "pnpm --filter @venture23-aleo/implementation run start vault-withdraw",
