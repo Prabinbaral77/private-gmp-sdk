@@ -18,6 +18,22 @@ export const VERU_PCC_VAULT_CLAIM_FUNCTION = 'claim';
 export const VERU_PCC_VAULT_WITHDRAW_FUNCTION = 'withdraw';
 export const VERU_PCC_VAULT_REFUND_FUNCTION = 'refund';
 
+/**
+ * The `commitments` mapping: `[u8; 32] => CommitmentData`. The on-chain
+ * `claim` reads it and asserts `status == false` before paying out, then flips
+ * the entry to `status: true`. The SDK reads the same mapping pre-flight (see
+ * the `claim` wrapper) so an already-claimed commitment fails fast with a clear
+ * error instead of an opaque finalize reject.
+ *
+ * ```leo
+ * struct CommitmentData:
+ *     token as field;
+ *     amount as u128;
+ *     status as boolean;
+ * ```
+ */
+export const VERU_PCC_VAULT_COMMITMENTS_MAPPING = 'commitments';
+
 // The Aleo literal bounds used by claim/withdraw are generic; their canonical
 // home is `@/constants/aleo-literals`. Re-exported here for backward compat.
 export { BYTES32_LENGTH, U128_MAX, U16_MAX, U64_MAX, U8_MAX } from './aleo-literals';

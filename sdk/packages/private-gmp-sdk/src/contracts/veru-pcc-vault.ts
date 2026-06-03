@@ -1,10 +1,12 @@
 import { BYTES32_LENGTH, U128_MAX, U16_MAX, U64_MAX } from '@/constants/aleo-literals';
 import {
   VERU_PCC_VAULT_CLAIM_FUNCTION,
+  VERU_PCC_VAULT_COMMITMENTS_MAPPING,
   VERU_PCC_VAULT_PROGRAM_NAME,
   VERU_PCC_VAULT_REFUND_FUNCTION,
   VERU_PCC_VAULT_WITHDRAW_FUNCTION,
 } from '@/constants/veru-pcc-vault';
+import { MappingReader } from '@/mappings/mapping-reader';
 import type { AleoNetwork } from '@/types/derivation';
 import type { SdkModule } from '@/types/scanner';
 import type {
@@ -50,23 +52,66 @@ type AleoCall = Pick<AleoExecuteOptions, 'programName' | 'functionName' | 'input
  * other actors and should not be reachable through the user SDK.
  */
 export class VeruPccVault {
+  private readonly mappingReader = new MappingReader();
+
   constructor(private readonly wallet: AleoWalletProvider) {}
 
-  /** Call `claim(payload, receiver_address, claimable_amount, expec_commitment_hash)`. */
-  claim(
+  /**
+   * Call `claim(payload, receiver_address, claimable_amount, expec_commitment_hash)`.
+   *
+   * Pre-flight: reads `commitments[expectedCommitmentHash]` and only proceeds
+   * when the entry exists with `status == false`. A missing entry (the relayer
+   * hasn't registered it via `recv_message` yet) or an already-claimed entry
+   * (`status == true`) is rejected with a {@link ValidationError} so the caller
+   * fails fast instead of paying for a transaction the on-chain finalize would
+   * reject.
+   */
+  async claim(
     params: VeruPccVaultClaimParams,
     options: VeruPccVaultCallOptions = {},
   ): Promise<AleoExecutionResult> {
+    await this.assertCommitmentClaimable(params);
     return this.wallet.execute({ ...options, ...buildClaimCall(params) });
   }
 
   /** Call `claim(...)` and block until the network confirms the transaction. */
-  claimAndWait(
+  async claimAndWait(
     params: VeruPccVaultClaimParams,
     options: VeruPccVaultCallOptions = {},
     receiptOptions: AleoWaitForReceiptOptions = {},
   ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
+    await this.assertCommitmentClaimable(params);
     return this.wallet.executeAndWait({ ...options, ...buildClaimCall(params) }, receiptOptions);
+  }
+
+  /**
+   * Read the on-chain `commitments` mapping for this claim's commitment hash and
+   * assert it is claimable right now. The commitment must exist with
+   * `status == false`; anything else throws:
+   * - absent entry → not registered yet, "cannot be claimed right now"
+   * - `status == true` → "already claimed"
+   */
+  private async assertCommitmentClaimable(params: VeruPccVaultClaimParams): Promise<void> {
+    const key = formatBytes32(params.expectedCommitmentHash, 'expectedCommitmentHash');
+    const value = await this.mappingReader.readAleoMapping({
+      network: this.wallet.network,
+      rpcUrl: this.wallet.rpcUrl,
+      program: VERU_PCC_VAULT_PROGRAM_NAME,
+      mapping: VERU_PCC_VAULT_COMMITMENTS_MAPPING,
+      key,
+    });
+    const where = `${VERU_PCC_VAULT_PROGRAM_NAME}/${VERU_PCC_VAULT_COMMITMENTS_MAPPING}[${key}]`;
+    const status = parseCommitmentStatus(value);
+    if (status === null) {
+      throw new ValidationError(
+        `Commitment cannot be claimed right now: no entry found at ${where}. The relayer has not registered this commitment yet (via recv_message) — wait for it to be available before claiming.`,
+      );
+    }
+    if (status === true) {
+      throw new ValidationError(
+        `Commitment has already been claimed (${where}.status == true); refusing to submit a duplicate claim.`,
+      );
+    }
   }
 
   /** Call `withdraw(...)`. */
@@ -191,6 +236,23 @@ function buildRefundCall(params: VeruPccVaultRefundParams): AleoCall {
       formatField(params.nonce, 'nonce'),
     ],
   };
+}
+
+/**
+ * Extract the `status` boolean from a `commitments` mapping value.
+ *
+ * `getProgramMappingValue` returns the `CommitmentData` plaintext literal (e.g.
+ * `{ token: 1field, amount: 100u128, status: true }`) or `"null"` for an absent
+ * key. Returns the parsed boolean, or `null` when the entry is absent or the
+ * value can't be parsed — both of which the caller treats as "not claimable".
+ */
+function parseCommitmentStatus(value: string | null | undefined): boolean | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed === 'null') return null;
+  const match = /status\s*:\s*(true|false)/.exec(trimmed);
+  if (!match) return null;
+  return match[1] === 'true';
 }
 
 /** Render a `Payload` struct as its Aleo literal, validating every field. */

@@ -43,6 +43,16 @@ export class AleoWalletProvider {
     this.options = options;
   }
 
+  /** The Aleo network this provider signs for. */
+  get network(): AleoNetwork {
+    return this.options.network;
+  }
+
+  /** The Aleo node RPC base URL this provider reads/broadcasts through. */
+  get rpcUrl(): string {
+    return this.options.rpcUrl;
+  }
+
   async getAddress(): Promise<string> {
     const { account } = await this.ensureInitialized();
     return account.address().to_string();
