@@ -68,3 +68,18 @@ export interface VeruPccVaultWithdrawParams {
   readonly fallbackReceiverAddress: string;
   readonly gmpFee: Uint;
 }
+
+/**
+ * Arguments to `refund(source_token_id, source_amount, nonce)`. Reclaims the
+ * funds of a previously-submitted outbound intent identified by its
+ * `source_token_id` / `source_amount` / `nonce` triple.
+ *
+ * ```leo
+ * fn refund(source_token_id: field, source_amount: u128, nonce: field)
+ * ```
+ */
+export interface VeruPccVaultRefundParams {
+  readonly sourceTokenId: FieldLike;
+  readonly sourceAmount: Uint;
+  readonly nonce: FieldLike;
+}

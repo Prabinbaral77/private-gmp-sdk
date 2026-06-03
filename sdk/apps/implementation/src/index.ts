@@ -2,7 +2,7 @@ import { runDerive } from './commands/derive-aleo-wallet.js';
 import { runExecute } from './commands/execute.js';
 import { runScan } from './commands/recordscanner.js';
 import { runSponsor } from './commands/sponsor.js';
-import { runVaultClaim, runVaultWithdraw } from './commands/vault.js';
+import { runVaultClaim, runVaultRefund, runVaultWithdraw } from './commands/vault.js';
 import { loadDotenv, printError } from './utils.js';
 
 const HELP = `Usage: sdk-tester <command> [options]
@@ -39,6 +39,12 @@ Commands:
       in commands/vault.ts (buildSampleWithdrawParams). The wallet must own
       the token_registry.aleo::Token record referenced by params.token — edit
       the sample with a real record literal (from 'pnpm scan') before running.
+
+  vault-refund [--priority 0] [--private-fee false] [--wait true] [--delegate [url]]
+      Call veru_pcc_vault.aleo/refund via VeruPccVault using the sample params
+      in commands/vault.ts (buildSampleRefundParams). The (source_token_id,
+      source_amount, nonce) triple must match an outbound intent the wallet
+      previously submitted via withdraw — edit the sample before running.
 
 Environment (read from apps/implementation/.env):
   ALEO_NETWORK, ALEO_API_HOST
@@ -78,6 +84,9 @@ async function main(): Promise<void> {
       return;
     case 'vault-withdraw':
       await runVaultWithdraw([sub, ...rest].filter(Boolean) as string[]);
+      return;
+    case 'vault-refund':
+      await runVaultRefund([sub, ...rest].filter(Boolean) as string[]);
       return;
     default:
       console.error(`Unknown command: ${command}\n`);

@@ -2,6 +2,7 @@ import { VeruPccVault } from '@venture23-aleo/private-gmp-sdk/contracts';
 import type {
   VeruPccVaultCallOptions,
   VeruPccVaultClaimParams,
+  VeruPccVaultRefundParams,
   VeruPccVaultWithdrawParams,
 } from '@venture23-aleo/private-gmp-sdk/contracts';
 import { AleoWalletProvider } from '@venture23-aleo/private-gmp-sdk/wallet';
@@ -146,6 +147,21 @@ async function buildSampleWithdrawParams(
   };
 }
 
+// Sample params for `refund(source_token_id, source_amount, nonce)`. These must
+// match an outbound intent the wallet previously submitted via `withdraw` —
+// the triple identifies which intent's funds to reclaim. Swap for real values
+// before running against testnet.
+function buildSampleRefundParams(): VeruPccVaultRefundParams {
+  return {
+    // FieldLike → bigint
+    sourceTokenId: BigInt(WITHDRAW_TOKEN_ID.replace(/u128$|field$/, '')),
+    // Uint → bigint
+    sourceAmount: 100n,
+    // FieldLike → bigint
+    nonce: BigInt(Math.floor(Math.random() * 93407655373) + 1),
+  };
+}
+
 // pnpm vault-claim [--priority 0] [--private-fee false] [--wait true] [--delegate [url]]
 //
 // Calls `veru_pcc_vault.aleo/claim` via VeruPccVault with the embedded sample
@@ -208,6 +224,40 @@ export async function runVaultWithdraw(argv: string[]): Promise<void> {
   printJson({
     ok: true,
     action: 'withdraw',
+    address,
+    params,
+    transactionId: result.transactionId,
+    receipt: serializeReceipt(receipt),
+  });
+}
+
+// pnpm vault-refund [--priority 0] [--private-fee false] [--wait true] [--delegate [url]]
+//
+// Calls `veru_pcc_vault.aleo/refund` via VeruPccVault with the embedded sample
+// params (see buildSampleRefundParams above). The (source_token_id,
+// source_amount, nonce) triple must match an outbound intent the wallet
+// previously submitted via withdraw — edit the sample before running.
+export async function runVaultRefund(argv: string[]): Promise<void> {
+  const args = parseArgs(argv);
+  const callOptions = readCallOptions(args);
+  const wait = readWait(args.flags['wait']);
+
+  const network = readNetwork();
+  const wallet = buildWallet(readDelegateConfig(args.flags['delegate']), network);
+  const address = await wallet.getAddress();
+  const vault = new VeruPccVault(wallet);
+  const params = buildSampleRefundParams();
+  console.log('Using refund params:', params);
+  if (!wait) {
+    const result = await vault.refund(params, callOptions);
+    printJson({ ok: true, action: 'refund', address, params, ...result, confirmed: false });
+    return;
+  }
+
+  const { result, receipt } = await vault.refundAndWait(params, callOptions);
+  printJson({
+    ok: true,
+    action: 'refund',
     address,
     params,
     transactionId: result.transactionId,

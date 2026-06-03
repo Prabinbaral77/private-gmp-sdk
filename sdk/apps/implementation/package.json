@@ -13,6 +13,7 @@
     "execute": "tsx --tsconfig tsconfig.json src/index.ts execute",
     "vault-claim": "tsx --tsconfig tsconfig.json src/index.ts vault-claim",
     "vault-withdraw": "tsx --tsconfig tsconfig.json src/index.ts vault-withdraw",
+    "vault-refund": "tsx --tsconfig tsconfig.json src/index.ts vault-refund",
     "test": "tsx --test --test-reporter=spec tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },

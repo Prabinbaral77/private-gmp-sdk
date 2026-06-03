@@ -8,5 +8,6 @@ export type {
   VeruPccVaultCallOptions,
   VeruPccVaultClaimParams,
   VeruPccVaultPayload,
+  VeruPccVaultRefundParams,
   VeruPccVaultWithdrawParams,
 } from './veru-pcc-vault';

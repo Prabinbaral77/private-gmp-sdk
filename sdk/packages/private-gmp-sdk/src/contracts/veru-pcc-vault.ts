@@ -2,6 +2,7 @@ import { BYTES32_LENGTH, U128_MAX, U16_MAX, U64_MAX } from '@/constants/aleo-lit
 import {
   VERU_PCC_VAULT_CLAIM_FUNCTION,
   VERU_PCC_VAULT_PROGRAM_NAME,
+  VERU_PCC_VAULT_REFUND_FUNCTION,
   VERU_PCC_VAULT_WITHDRAW_FUNCTION,
 } from '@/constants/veru-pcc-vault';
 import type { AleoNetwork } from '@/types/derivation';
@@ -10,6 +11,7 @@ import type {
   VeruPccVaultCallOptions,
   VeruPccVaultClaimParams,
   VeruPccVaultPayload,
+  VeruPccVaultRefundParams,
   VeruPccVaultWithdrawParams,
 } from '@/types/veru-pcc-vault';
 import type {
@@ -29,6 +31,7 @@ export type {
   VeruPccVaultCallOptions,
   VeruPccVaultClaimParams,
   VeruPccVaultPayload,
+  VeruPccVaultRefundParams,
   VeruPccVaultWithdrawParams,
 } from '@/types/veru-pcc-vault';
 
@@ -37,13 +40,13 @@ type AleoCall = Pick<AleoExecuteOptions, 'programName' | 'functionName' | 'input
 
 /**
  * Typed wrapper around `veru_pcc_vault.aleo`. Encodes the program name, function
- * names, and input signatures for the user-facing transitions `claim` and
- * `withdraw`, then delegates to a generic `AleoWalletProvider#execute` after
- * validating each input fits its Aleo type.
+ * names, and input signatures for the user-facing transitions `claim`,
+ * `withdraw`, and `refund`, then delegates to a generic
+ * `AleoWalletProvider#execute` after validating each input fits its Aleo type.
  *
  * Only the user-driven transitions are exposed here. Council/relayer
  * transitions (`initialize`, `set_fee_bps`, `set_relayer_status`, `recv_message`,
- * `refund`, `make_wallet`) are intentionally not wrapped — they're invoked from
+ * `make_wallet`) are intentionally not wrapped — they're invoked from
  * other actors and should not be reachable through the user SDK.
  */
 export class VeruPccVault {
@@ -81,6 +84,23 @@ export class VeruPccVault {
     receiptOptions: AleoWaitForReceiptOptions = {},
   ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
     return this.wallet.executeAndWait({ ...options, ...buildWithdrawCall(params) }, receiptOptions);
+  }
+
+  /** Call `refund(source_token_id, source_amount, nonce)`. */
+  refund(
+    params: VeruPccVaultRefundParams,
+    options: VeruPccVaultCallOptions = {},
+  ): Promise<AleoExecutionResult> {
+    return this.wallet.execute({ ...options, ...buildRefundCall(params) });
+  }
+
+  /** Call `refund(...)` and block until the network confirms the transaction. */
+  refundAndWait(
+    params: VeruPccVaultRefundParams,
+    options: VeruPccVaultCallOptions = {},
+    receiptOptions: AleoWaitForReceiptOptions = {},
+  ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
+    return this.wallet.executeAndWait({ ...options, ...buildRefundCall(params) }, receiptOptions);
   }
 
   /**
@@ -157,6 +177,18 @@ function buildWithdrawCall(params: VeruPccVaultWithdrawParams): AleoCall {
       formatField(params.nonce, 'nonce'),
       assertAddress(params.fallbackReceiverAddress, 'fallbackReceiverAddress'),
       formatUnsigned(params.gmpFee, 'gmpFee', 128, U128_MAX),
+    ],
+  };
+}
+
+function buildRefundCall(params: VeruPccVaultRefundParams): AleoCall {
+  return {
+    programName: VERU_PCC_VAULT_PROGRAM_NAME,
+    functionName: VERU_PCC_VAULT_REFUND_FUNCTION,
+    inputs: [
+      formatField(params.sourceTokenId, 'sourceTokenId'),
+      formatUnsigned(params.sourceAmount, 'sourceAmount', 128, U128_MAX),
+      formatField(params.nonce, 'nonce'),
     ],
   };
 }
