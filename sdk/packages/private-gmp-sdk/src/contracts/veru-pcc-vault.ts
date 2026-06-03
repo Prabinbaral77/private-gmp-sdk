@@ -4,6 +4,7 @@ import {
   VERU_PCC_VAULT_COMMITMENTS_MAPPING,
   VERU_PCC_VAULT_PROGRAM_NAME,
   VERU_PCC_VAULT_REFUND_FUNCTION,
+  VERU_PCC_VAULT_WITHDRAW_COMMITMENT_MAPPING,
   VERU_PCC_VAULT_WITHDRAW_FUNCTION,
 } from '@/constants/veru-pcc-vault';
 import { MappingReader } from '@/mappings/mapping-reader';
@@ -114,21 +115,57 @@ export class VeruPccVault {
     }
   }
 
-  /** Call `withdraw(...)`. */
-  withdraw(
+  /**
+   * Call `withdraw(...)`.
+   *
+   * Pre-flight: reads `withdraw_commitment[expectedCommitmentHash]` and only
+   * proceeds when the slot is empty. A non-null entry means an intent with this
+   * commitment is already in flight (`Withdraw{ ..., intent_status: PENDING }`),
+   * so the withdraw is rejected with a {@link ValidationError} before paying for
+   * a transaction the on-chain finalize would reject.
+   */
+  async withdraw(
     params: VeruPccVaultWithdrawParams,
     options: VeruPccVaultCallOptions = {},
   ): Promise<AleoExecutionResult> {
+    await this.assertWithdrawCommitmentAbsent(params);
     return this.wallet.execute({ ...options, ...buildWithdrawCall(params) });
   }
 
   /** Call `withdraw(...)` and block until the network confirms the transaction. */
-  withdrawAndWait(
+  async withdrawAndWait(
     params: VeruPccVaultWithdrawParams,
     options: VeruPccVaultCallOptions = {},
     receiptOptions: AleoWaitForReceiptOptions = {},
   ): Promise<{ result: AleoExecutionResult; receipt: AleoTransactionReceipt }> {
+    await this.assertWithdrawCommitmentAbsent(params);
     return this.wallet.executeAndWait({ ...options, ...buildWithdrawCall(params) }, receiptOptions);
+  }
+
+  /**
+   * Read the on-chain `withdraw_commitment` mapping for this intent's commitment
+   * hash and assert the slot is free. The mapping is `[u8; 32] => Withdraw`; an
+   * entry only exists once an intent has been registered, so:
+   * - absent entry (`null`) → slot is free, the withdraw may proceed
+   * - present entry → intent already in flight, throws {@link ValidationError}
+   */
+  private async assertWithdrawCommitmentAbsent(
+    params: VeruPccVaultWithdrawParams,
+  ): Promise<void> {
+    const key = formatBytes32(params.expectedCommitmentHash, 'expectedCommitmentHash');
+    const value = await this.mappingReader.readAleoMapping({
+      network: this.wallet.network,
+      rpcUrl: this.wallet.rpcUrl,
+      program: VERU_PCC_VAULT_PROGRAM_NAME,
+      mapping: VERU_PCC_VAULT_WITHDRAW_COMMITMENT_MAPPING,
+      key,
+    });
+    const where = `${VERU_PCC_VAULT_PROGRAM_NAME}/${VERU_PCC_VAULT_WITHDRAW_COMMITMENT_MAPPING}[${key}]`;
+    if (!isEmptyMappingValue(value)) {
+      throw new ValidationError(
+        `Withdraw commitment already exists at ${where} (${value.trim()}); an intent with this commitment is already in flight. Refusing to submit a duplicate withdraw.`,
+      );
+    }
   }
 
   /** Call `refund(source_token_id, source_amount, nonce)`. */
@@ -253,6 +290,18 @@ function parseCommitmentStatus(value: string | null | undefined): boolean | null
   const match = /status\s*:\s*(true|false)/.exec(trimmed);
   if (!match) return null;
   return match[1] === 'true';
+}
+
+/**
+ * Whether a mapping read returned "no entry". `getProgramMappingValue` yields
+ * the literal string `"null"` (or an empty/whitespace string) for an absent
+ * key, and the stored struct literal otherwise. Treats both `null`/`undefined`
+ * and the `"null"` sentinel as empty.
+ */
+function isEmptyMappingValue(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const trimmed = value.trim();
+  return trimmed.length === 0 || trimmed === 'null';
 }
 
 /** Render a `Payload` struct as its Aleo literal, validating every field. */

@@ -67,6 +67,16 @@ export interface VeruPccVaultWithdrawParams {
   readonly nonce: FieldLike;
   readonly fallbackReceiverAddress: string;
   readonly gmpFee: Uint;
+  /**
+   * The intent's commitment hash — the `[u8; 32]` key into the
+   * `withdraw_commitment` mapping. Used only for the SDK's pre-flight check
+   * (the on-chain `withdraw` computes this itself from the other inputs, so it
+   * is not forwarded as a transition input). Compute it the same way as
+   * `claim`'s commitment via
+   * {@link VeruPccVault.computePayloadCommitmentHash}. A non-null entry at this
+   * key means the intent is already in flight and the withdraw is rejected.
+   */
+  readonly expectedCommitmentHash: Bytes32Like;
 }
 
 /**

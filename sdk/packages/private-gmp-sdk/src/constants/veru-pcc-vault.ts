@@ -34,6 +34,25 @@ export const VERU_PCC_VAULT_REFUND_FUNCTION = 'refund';
  */
 export const VERU_PCC_VAULT_COMMITMENTS_MAPPING = 'commitments';
 
+/**
+ * The `withdraw_commitment` mapping: `[u8; 32] => Withdraw`. The on-chain
+ * `withdraw` writes a fresh entry here keyed by the intent's commitment hash:
+ *
+ * ```leo
+ * struct Withdraw:
+ *     token as field;
+ *     amount as u128;       // net amount sent
+ *     intent_status as u8;  // TAG_INTENT_PENDING on a fresh withdraw
+ *     nonce as field;
+ * ```
+ *
+ * An entry only exists once an intent has been registered, so the SDK reads
+ * this mapping pre-flight (see the `withdraw` wrapper): a non-null entry means
+ * the commitment is already in flight and the withdraw must be rejected; a null
+ * entry means the slot is free and the withdraw can proceed.
+ */
+export const VERU_PCC_VAULT_WITHDRAW_COMMITMENT_MAPPING = 'withdraw_commitment';
+
 // The Aleo literal bounds used by claim/withdraw are generic; their canonical
 // home is `@/constants/aleo-literals`. Re-exported here for backward compat.
 export { BYTES32_LENGTH, U128_MAX, U16_MAX, U64_MAX, U8_MAX } from './aleo-literals';

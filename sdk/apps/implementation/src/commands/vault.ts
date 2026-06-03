@@ -117,11 +117,34 @@ async function mintTokenRecord(wallet: AleoWalletProvider): Promise<string> {
 
 async function buildSampleWithdrawParams(
   wallet: AleoWalletProvider,
+  network: AleoNetwork,
 ): Promise<VeruPccVaultWithdrawParams> {
   const walletAddress = await wallet.getAddress();
   // Mint a real Token record (token_id 987654321field) so withdraw has a
   // private input to consume, rather than a hand-written literal.
   const token = await mintTokenRecord(wallet);
+  const nonce = BigInt(Math.floor(Math.random() * 93407655373) + 1);
+  // The on-chain `withdraw` derives the `withdraw_commitment` key the same way
+  // `claim` derives its commitment — BHP256 over a Payload-shaped struct (see
+  // VeruPccVault.computePayloadCommitmentHash). Match that derivation locally so
+  // the SDK's pre-flight "slot is free" check uses the same key the contract
+  // writes. Swap these payload fields for the real ones your `withdraw`
+  // derivation uses before running against testnet.
+  const expectedCommitmentHash = await VeruPccVault.computePayloadCommitmentHash(
+    {
+      sourceChainId: '6694886634403', // veru_pcc_vault.aleo::ALEO_CHAIN_ID
+      sourceTokenId: WITHDRAW_TOKEN_ID.replace(/u128$|field$/, ''),
+      sourceAmount: '100',
+      aleoBinding: walletAddress,
+      destinationTokenId: WITHDRAW_TOKEN_ID.replace(/u128$|field$/, ''),
+      nonce: nonce.toString(),
+    },
+    network,
+  );
+  console.log(
+    'withdraw commitment (hex):',
+    Buffer.from(expectedCommitmentHash).toString('hex'),
+  );
   return {
     token,
     // Uint → bigint
@@ -139,11 +162,13 @@ async function buildSampleWithdrawParams(
     hubAddress: toBytes32(HUB_ADDRESS),
     destReceiverAddrs: toBytes32(WITHDRAW_DATA),
     // FieldLike → bigint
-    nonce: BigInt(Math.floor(Math.random() * 93407655373) + 1),
+    nonce,
     // string — Aleo address
     fallbackReceiverAddress: walletAddress,
     // Uint → bigint
     gmpFee: 0n,
+    // Bytes32Like — the withdraw_commitment key the SDK pre-flights against.
+    expectedCommitmentHash,
   };
 }
 
@@ -211,8 +236,7 @@ export async function runVaultWithdraw(argv: string[]): Promise<void> {
   const wallet = buildWallet(readDelegateConfig(args.flags['delegate']), network);
   const address = await wallet.getAddress();
   const vault = new VeruPccVault(wallet);
-  const params = await buildSampleWithdrawParams(wallet);
-  console.log('Using withdraw params:', params);
+  const params = await buildSampleWithdrawParams(wallet, network);
   // return;
   if (!wait) {
     const result = await vault.withdraw(params, callOptions);
